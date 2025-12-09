@@ -17,6 +17,13 @@
 #include <fstream>
 #include <cstring>
 #include <cmath>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+#include <queue>
+#include <functional>
+#include <memory>
+#include <atomic>
 
 // ====================================================================================
 // Global Win32
@@ -97,7 +104,7 @@ std::vector<InstanceData> g_instances(INSTANCE_COUNT);
 float g_time = 0.0f;
 
 // ====================================================================================
-// Helper structs
+// Helper structs for Vulkan
 // ====================================================================================
 
 struct QueueFamilyIndices {
@@ -118,6 +125,103 @@ struct SwapchainSupportDetails {
 const std::vector<const char*> DEVICE_EXTENSIONS = {
     VK_KHR_SWAPCHAIN_EXTENSION_NAME
 };
+
+// ====================================================================================
+// Simple Job System (Thread Pool)
+// ====================================================================================
+
+class JobSystem {
+public:
+    explicit JobSystem(uint32_t threadCount = std::thread::hardware_concurrency())
+        : m_stop(false), m_activeJobs(0) 
+    {
+        if (threadCount == 0) {
+            threadCount = 1;
+        }
+
+        m_workers.reserve(threadCount);
+        for (uint32_t i = 0; i < threadCount; ++i) {
+            m_workers.emplace_back([this]() { workerLoop(); });
+        }
+
+        std::cout << "JobSystem: started with " << threadCount << " worker threads\n";
+    }
+
+    ~JobSystem() {
+        {
+            std::unique_lock<std::mutex> lock(m_mutex);
+            m_stop = true;
+        }
+        m_cv.notify_all();
+
+        for (auto& t : m_workers) {
+            if (t.joinable()) {
+                t.join();
+            }
+        }
+    }
+
+    void schedule(const std::function<void()>& job) {
+        {
+            std::unique_lock<std::mutex> lock(m_mutex);
+            m_jobs.push(job);
+            ++m_activeJobs;
+        }
+        m_cv.notify_one();
+    }
+
+    void wait() {
+        std::unique_lock<std::mutex> lock(m_mutex);
+        m_doneCv.wait(lock, [this]() {
+            return m_jobs.empty() && m_activeJobs == 0;
+        });
+    }
+
+    uint32_t threadCount() const {
+        return static_cast<uint32_t>(m_workers.size());
+    }
+
+private:
+    void workerLoop() {
+        while (true) {
+            std::function<void()> job;
+
+            {
+                std::unique_lock<std::mutex> lock(m_mutex);
+                m_cv.wait(lock, [this]() {
+                    return m_stop || !m_jobs.empty();
+                });
+
+                if (m_stop && m_jobs.empty()) {
+                    return;
+                }
+
+                job = std::move(m_jobs.front());
+                m_jobs.pop();
+            }
+
+            job();
+
+            {
+                std::unique_lock<std::mutex> lock(m_mutex);
+                --m_activeJobs;
+                if (m_jobs.empty() && m_activeJobs == 0) {
+                    m_doneCv.notify_all();
+                }
+            }
+        }
+    }
+
+    std::vector<std::thread> m_workers;
+    std::queue<std::function<void()>> m_jobs;
+    mutable std::mutex m_mutex;
+    std::condition_variable m_cv;
+    std::condition_variable m_doneCv;
+    bool m_stop;
+    int m_activeJobs;
+};
+
+std::unique_ptr<JobSystem> g_jobSystem;
 
 // ====================================================================================
 // Forward declarations
@@ -168,10 +272,16 @@ int main() {
     g_hInstance = GetModuleHandle(nullptr);
 
     try {
-        createWin32Window(800, 600, "Legionfall Vulkan (Instanced Crowd)");
+        createWin32Window(800, 600, "Legionfall Vulkan (Instanced Crowd + Job System)");
         initVulkan();
+
+        // Start the job system after Vulkan is ready
+        g_jobSystem = std::make_unique<JobSystem>();
+
         mainLoop();
+
         vkDeviceWaitIdle(g_device);
+        g_jobSystem.reset();
         cleanup();
     }
     catch (const std::exception& e) {
@@ -268,8 +378,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 // ====================================================================================
 
 void initInstances() {
-    // Arrange instances in a grid from -0.8..0.8 in X and Y
+    // Initial grid layout; animation will perturb it
     const float span = 1.8f; // a bit less than full screen
+
     for (uint32_t y = 0; y < INSTANCE_GRID_Y; ++y) {
         for (uint32_t x = 0; x < INSTANCE_GRID_X; ++x) {
             uint32_t idx = y * INSTANCE_GRID_X + x;
@@ -280,7 +391,6 @@ void initInstances() {
             g_instances[idx].offset[0] = fx * span;
             g_instances[idx].offset[1] = fy * span;
 
-            // Slight variation per instance
             float t = static_cast<float>(idx) / static_cast<float>(INSTANCE_COUNT);
             g_instances[idx].color[0] = 0.5f + 0.5f * std::sin(t * 6.2831f);
             g_instances[idx].color[1] = 0.5f + 0.5f * std::sin(t * 6.2831f + 2.094f);
@@ -310,28 +420,52 @@ void initVulkan() {
 }
 
 // ====================================================================================
-// Instance update (simple animation)
+// Instance update (parallel using JobSystem)
 // ====================================================================================
 
 void updateInstances(float dt) {
     g_time += dt;
 
-    for (uint32_t y = 0; y < INSTANCE_GRID_Y; ++y) {
-        for (uint32_t x = 0; x < INSTANCE_GRID_X; ++x) {
-            uint32_t idx = y * INSTANCE_GRID_X + x;
-
-            float fx = (static_cast<float>(x) / (INSTANCE_GRID_X - 1)) - 0.5f;
-            float fy = (static_cast<float>(y) / (INSTANCE_GRID_Y - 1)) - 0.5f;
-
-            float baseX = fx * 1.8f;
-            float baseY = fy * 1.8f;
-
-            float phase = static_cast<float>(idx) * 0.15f;
-
-            g_instances[idx].offset[0] = baseX + 0.05f * std::sin(g_time * 2.0f + phase);
-            g_instances[idx].offset[1] = baseY + 0.05f * std::cos(g_time * 2.0f + phase);
-        }
+    const uint32_t total = static_cast<uint32_t>(g_instances.size());
+    if (total == 0 || !g_jobSystem) {
+        return;
     }
+
+    uint32_t threads = g_jobSystem->threadCount();
+    if (threads == 0) threads = 1;
+
+    const uint32_t chunkSize = (total + threads - 1) / threads;
+
+    const float span = 1.8f;
+
+    for (uint32_t t = 0; t < threads; ++t) {
+        uint32_t begin = t * chunkSize;
+        if (begin >= total) break;
+        uint32_t end = std::min(begin + chunkSize, total);
+
+        g_jobSystem->schedule([begin, end, span]() {
+            for (uint32_t i = begin; i < end; ++i) {
+                uint32_t x = i % INSTANCE_GRID_X;
+                uint32_t y = i / INSTANCE_GRID_X;
+
+                float fx = (static_cast<float>(x) / (INSTANCE_GRID_X - 1)) - 0.5f;
+                float fy = (static_cast<float>(y) / (INSTANCE_GRID_Y - 1)) - 0.5f;
+
+                float baseX = fx * span;
+                float baseY = fy * span;
+
+                float phase = static_cast<float>(i) * 0.15f;
+
+                // g_time is read-only inside this lambda (updated once per frame on main thread)
+                float timeNow = g_time;
+
+                g_instances[i].offset[0] = baseX + 0.05f * std::sin(timeNow * 2.0f + phase);
+                g_instances[i].offset[1] = baseY + 0.05f * std::cos(timeNow * 2.0f + phase);
+            }
+        });
+    }
+
+    g_jobSystem->wait();
 }
 
 void updateInstanceBuffer() {
@@ -730,7 +864,6 @@ VkShaderModule createShaderModule(const std::vector<char>& code) {
 }
 
 void createGraphicsPipeline() {
-    // Assume we run exe from build/, shaders live in ../shaders/
     auto vertCode = readFile("../shaders/triangle.vert.spv");
     auto fragCode = readFile("../shaders/triangle.frag.spv");
 
@@ -751,7 +884,6 @@ void createGraphicsPipeline() {
 
     VkPipelineShaderStageCreateInfo stages[] = { vertStage, fragStage };
 
-    // Vertex input: binding 0 = per-vertex, binding 1 = per-instance
     VkVertexInputBindingDescription bindings[2]{};
 
     bindings[0].binding = 0;
@@ -764,25 +896,21 @@ void createGraphicsPipeline() {
 
     VkVertexInputAttributeDescription attributes[4]{};
 
-    // Per-vertex position
     attributes[0].binding = 0;
     attributes[0].location = 0;
     attributes[0].format = VK_FORMAT_R32G32_SFLOAT;
     attributes[0].offset = offsetof(Vertex, pos);
 
-    // Per-vertex color
     attributes[1].binding = 0;
     attributes[1].location = 1;
     attributes[1].format = VK_FORMAT_R32G32B32_SFLOAT;
     attributes[1].offset = offsetof(Vertex, color);
 
-    // Per-instance offset
     attributes[2].binding = 1;
     attributes[2].location = 2;
     attributes[2].format = VK_FORMAT_R32G32_SFLOAT;
     attributes[2].offset = offsetof(InstanceData, offset);
 
-    // Per-instance color
     attributes[3].binding = 1;
     attributes[3].location = 3;
     attributes[3].format = VK_FORMAT_R32G32B32_SFLOAT;
@@ -1041,7 +1169,7 @@ void createCommandBuffers() {
         }
 
         VkClearValue clear{};
-        clear.color = { { 0.0f, 0.5f, 0.6f, 1.0f } }; // teal-ish background
+        clear.color = { { 0.0f, 0.5f, 0.6f, 1.0f } };
 
         VkRenderPassBeginInfo rp{};
         rp.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
