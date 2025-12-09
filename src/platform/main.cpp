@@ -24,6 +24,7 @@
 #include <functional>
 #include <memory>
 #include <atomic>
+#include <chrono>
 
 // ====================================================================================
 // Global Win32
@@ -96,12 +97,27 @@ const std::vector<Vertex> g_vertices = {
 };
 
 // Grid of instances
-const uint32_t INSTANCE_GRID_X = 20;
-const uint32_t INSTANCE_GRID_Y = 20;
+const uint32_t INSTANCE_GRID_X = 200;
+const uint32_t INSTANCE_GRID_Y = 200;
 const uint32_t INSTANCE_COUNT = INSTANCE_GRID_X * INSTANCE_GRID_Y;
 
 std::vector<InstanceData> g_instances(INSTANCE_COUNT);
 float g_time = 0.0f;
+
+// ====================================================================================
+// Profiling state
+// ====================================================================================
+
+using Clock = std::chrono::high_resolution_clock;
+
+double g_accumTime = 0.0;
+int g_accumFrames = 0;
+
+double g_lastUpdateMs = 0.0;
+double g_lastFrameMs = 0.0;
+
+// Toggle to compare single-threaded vs parallel updates
+bool g_useParallelUpdate = true;
 
 // ====================================================================================
 // Helper structs for Vulkan
@@ -272,11 +288,12 @@ int main() {
     g_hInstance = GetModuleHandle(nullptr);
 
     try {
-        createWin32Window(800, 600, "Legionfall Vulkan (Instanced Crowd + Job System)");
+        createWin32Window(800, 600, "Legionfall Vulkan (Crowd + Jobs + Profiling)");
         initVulkan();
 
-        // Start the job system after Vulkan is ready
         g_jobSystem = std::make_unique<JobSystem>();
+
+        std::cout << "Press P in the console to toggle parallel update on/off (then rebuild with your choice later).\n";
 
         mainLoop();
 
@@ -340,6 +357,8 @@ void mainLoop() {
     MSG msg{};
     bool running = true;
 
+    auto lastPrint = Clock::now();
+
     while (running) {
         while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
             if (msg.message == WM_QUIT) {
@@ -352,11 +371,48 @@ void mainLoop() {
 
         if (!running) break;
 
-        // Fixed small timestep for simple animation
-        updateInstances(0.016f);
-        updateInstanceBuffer();
+        auto frameStart = Clock::now();
 
+        const float dt = 0.016f;
+
+        auto updateStart = Clock::now();
+        updateInstances(dt);
+        auto updateEnd = Clock::now();
+
+        updateInstanceBuffer();
         drawFrame();
+
+        auto frameEnd = Clock::now();
+
+        g_lastUpdateMs = std::chrono::duration<double, std::milli>(updateEnd - updateStart).count();
+        g_lastFrameMs = std::chrono::duration<double, std::milli>(frameEnd - frameStart).count();
+
+        double frameSeconds = std::chrono::duration<double>(frameEnd - frameStart).count();
+        g_accumTime += frameSeconds;
+        g_accumFrames++;
+
+        auto now = Clock::now();
+        double sinceLastPrint = std::chrono::duration<double>(now - lastPrint).count();
+
+        if (sinceLastPrint >= 1.0) {
+            double fps = g_accumFrames / g_accumTime;
+            std::cout << (g_useParallelUpdate ? "[Parallel] " : "[Single]  ")
+                      << "FPS: " << fps
+                      << " | update: " << g_lastUpdateMs << " ms"
+                      << " | frame: " << g_lastFrameMs << " ms"
+                      << std::endl;
+
+            g_accumFrames = 0;
+            g_accumTime = 0.0;
+            lastPrint = now;
+        }
+
+        // Optional: read from stdin to toggle parallelism (simplest dev-time trick)
+        // Comment this out if it annoys you.
+        if (GetAsyncKeyState('P') & 0x0001) {
+            g_useParallelUpdate = !g_useParallelUpdate;
+            std::cout << "Parallel update toggled to: " << (g_useParallelUpdate ? "ON" : "OFF") << std::endl;
+        }
     }
 }
 
@@ -378,8 +434,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 // ====================================================================================
 
 void initInstances() {
-    // Initial grid layout; animation will perturb it
-    const float span = 1.8f; // a bit less than full screen
+    const float span = 1.8f;
 
     for (uint32_t y = 0; y < INSTANCE_GRID_Y; ++y) {
         for (uint32_t x = 0; x < INSTANCE_GRID_X; ++x) {
@@ -420,30 +475,53 @@ void initVulkan() {
 }
 
 // ====================================================================================
-// Instance update (parallel using JobSystem)
+// Instance update (single-thread vs JobSystem parallel)
 // ====================================================================================
 
 void updateInstances(float dt) {
     g_time += dt;
 
     const uint32_t total = static_cast<uint32_t>(g_instances.size());
-    if (total == 0 || !g_jobSystem) {
+    if (total == 0) {
         return;
     }
 
+    const float span = 1.8f;
+
+    // Fallback / comparison: single-threaded path
+    if (!g_useParallelUpdate || !g_jobSystem) {
+        for (uint32_t i = 0; i < total; ++i) {
+            uint32_t x = i % INSTANCE_GRID_X;
+            uint32_t y = i / INSTANCE_GRID_X;
+
+            float fx = (static_cast<float>(x) / (INSTANCE_GRID_X - 1)) - 0.5f;
+            float fy = (static_cast<float>(y) / (INSTANCE_GRID_Y - 1)) - 0.5f;
+
+            float baseX = fx * span;
+            float baseY = fy * span;
+
+            float phase = static_cast<float>(i) * 0.15f;
+            float timeNow = g_time;
+
+            g_instances[i].offset[0] = baseX + 0.05f * std::sin(timeNow * 2.0f + phase);
+            g_instances[i].offset[1] = baseY + 0.05f * std::cos(timeNow * 2.0f + phase);
+        }
+        return;
+    }
+
+    // Parallel path
     uint32_t threads = g_jobSystem->threadCount();
     if (threads == 0) threads = 1;
 
     const uint32_t chunkSize = (total + threads - 1) / threads;
-
-    const float span = 1.8f;
+    const float timeNow = g_time;
 
     for (uint32_t t = 0; t < threads; ++t) {
         uint32_t begin = t * chunkSize;
         if (begin >= total) break;
         uint32_t end = std::min(begin + chunkSize, total);
 
-        g_jobSystem->schedule([begin, end, span]() {
+        g_jobSystem->schedule([begin, end, span, timeNow]() {
             for (uint32_t i = begin; i < end; ++i) {
                 uint32_t x = i % INSTANCE_GRID_X;
                 uint32_t y = i / INSTANCE_GRID_X;
@@ -455,9 +533,6 @@ void updateInstances(float dt) {
                 float baseY = fy * span;
 
                 float phase = static_cast<float>(i) * 0.15f;
-
-                // g_time is read-only inside this lambda (updated once per frame on main thread)
-                float timeNow = g_time;
 
                 g_instances[i].offset[0] = baseX + 0.05f * std::sin(timeNow * 2.0f + phase);
                 g_instances[i].offset[1] = baseY + 0.05f * std::cos(timeNow * 2.0f + phase);
