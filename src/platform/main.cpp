@@ -16,6 +16,7 @@
 #include <string>
 #include <fstream>
 #include <cstring>
+#include <cmath>
 
 // ====================================================================================
 // Global Win32
@@ -55,23 +56,45 @@ std::vector<VkSemaphore> g_renderFinishedSemaphores;
 std::vector<VkFence> g_inFlightFences;
 size_t g_currentFrame = 0;
 
-// Graphics pipeline + vertex buffer
+// Graphics pipeline
 VkPipelineLayout g_pipelineLayout = VK_NULL_HANDLE;
 VkPipeline g_graphicsPipeline = VK_NULL_HANDLE;
 
+// Vertex + instance buffers
 VkBuffer g_vertexBuffer = VK_NULL_HANDLE;
 VkDeviceMemory g_vertexBufferMemory = VK_NULL_HANDLE;
+
+VkBuffer g_instanceBuffer = VK_NULL_HANDLE;
+VkDeviceMemory g_instanceBufferMemory = VK_NULL_HANDLE;
+
+// ====================================================================================
+// Vertex & Instance Data
+// ====================================================================================
 
 struct Vertex {
     float pos[2];
     float color[3];
 };
 
+struct InstanceData {
+    float offset[2];
+    float color[3];
+};
+
+// Base triangle geometry (one triangle in object/local space)
 const std::vector<Vertex> g_vertices = {
     { {  0.0f, -0.5f }, { 1.0f, 0.0f, 0.0f } }, // bottom (red)
     { {  0.5f,  0.5f }, { 0.0f, 1.0f, 0.0f } }, // right (green)
     { { -0.5f,  0.5f }, { 0.0f, 0.0f, 1.0f } }  // left (blue)
 };
+
+// Grid of instances
+const uint32_t INSTANCE_GRID_X = 20;
+const uint32_t INSTANCE_GRID_Y = 20;
+const uint32_t INSTANCE_COUNT = INSTANCE_GRID_X * INSTANCE_GRID_Y;
+
+std::vector<InstanceData> g_instances(INSTANCE_COUNT);
+float g_time = 0.0f;
 
 // ====================================================================================
 // Helper structs
@@ -104,6 +127,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 void createWin32Window(int width, int height, const char* title);
 void initVulkan();
+void initInstances();
+
 void createInstance();
 void createSurface();
 void pickPhysicalDevice();
@@ -115,10 +140,13 @@ void createGraphicsPipeline();
 void createFramebuffers();
 void createCommandPool();
 void createVertexBuffer();
+void createInstanceBuffer();
 void createCommandBuffers();
 void createSyncObjects();
 
 void mainLoop();
+void updateInstances(float dt);
+void updateInstanceBuffer();
 void drawFrame();
 void cleanup();
 
@@ -140,7 +168,7 @@ int main() {
     g_hInstance = GetModuleHandle(nullptr);
 
     try {
-        createWin32Window(800, 600, "Legionfall Vulkan (Triangle)");
+        createWin32Window(800, 600, "Legionfall Vulkan (Instanced Crowd)");
         initVulkan();
         mainLoop();
         vkDeviceWaitIdle(g_device);
@@ -214,6 +242,10 @@ void mainLoop() {
 
         if (!running) break;
 
+        // Fixed small timestep for simple animation
+        updateInstances(0.016f);
+        updateInstanceBuffer();
+
         drawFrame();
     }
 }
@@ -235,6 +267,28 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 // Vulkan initialisation
 // ====================================================================================
 
+void initInstances() {
+    // Arrange instances in a grid from -0.8..0.8 in X and Y
+    const float span = 1.8f; // a bit less than full screen
+    for (uint32_t y = 0; y < INSTANCE_GRID_Y; ++y) {
+        for (uint32_t x = 0; x < INSTANCE_GRID_X; ++x) {
+            uint32_t idx = y * INSTANCE_GRID_X + x;
+
+            float fx = (static_cast<float>(x) / (INSTANCE_GRID_X - 1)) - 0.5f;
+            float fy = (static_cast<float>(y) / (INSTANCE_GRID_Y - 1)) - 0.5f;
+
+            g_instances[idx].offset[0] = fx * span;
+            g_instances[idx].offset[1] = fy * span;
+
+            // Slight variation per instance
+            float t = static_cast<float>(idx) / static_cast<float>(INSTANCE_COUNT);
+            g_instances[idx].color[0] = 0.5f + 0.5f * std::sin(t * 6.2831f);
+            g_instances[idx].color[1] = 0.5f + 0.5f * std::sin(t * 6.2831f + 2.094f);
+            g_instances[idx].color[2] = 0.5f + 0.5f * std::sin(t * 6.2831f + 4.188f);
+        }
+    }
+}
+
 void initVulkan() {
     createInstance();
     createSurface();
@@ -247,9 +301,51 @@ void initVulkan() {
     createFramebuffers();
     createCommandPool();
     createVertexBuffer();
+
+    initInstances();
+    createInstanceBuffer();
+
     createCommandBuffers();
     createSyncObjects();
 }
+
+// ====================================================================================
+// Instance update (simple animation)
+// ====================================================================================
+
+void updateInstances(float dt) {
+    g_time += dt;
+
+    for (uint32_t y = 0; y < INSTANCE_GRID_Y; ++y) {
+        for (uint32_t x = 0; x < INSTANCE_GRID_X; ++x) {
+            uint32_t idx = y * INSTANCE_GRID_X + x;
+
+            float fx = (static_cast<float>(x) / (INSTANCE_GRID_X - 1)) - 0.5f;
+            float fy = (static_cast<float>(y) / (INSTANCE_GRID_Y - 1)) - 0.5f;
+
+            float baseX = fx * 1.8f;
+            float baseY = fy * 1.8f;
+
+            float phase = static_cast<float>(idx) * 0.15f;
+
+            g_instances[idx].offset[0] = baseX + 0.05f * std::sin(g_time * 2.0f + phase);
+            g_instances[idx].offset[1] = baseY + 0.05f * std::cos(g_time * 2.0f + phase);
+        }
+    }
+}
+
+void updateInstanceBuffer() {
+    VkDeviceSize bufferSize = sizeof(InstanceData) * g_instances.size();
+
+    void* data = nullptr;
+    vkMapMemory(g_device, g_instanceBufferMemory, 0, bufferSize, 0, &data);
+    std::memcpy(data, g_instances.data(), static_cast<size_t>(bufferSize));
+    vkUnmapMemory(g_device, g_instanceBufferMemory);
+}
+
+// ====================================================================================
+// Vulkan instance + surface
+// ====================================================================================
 
 void createInstance() {
     VkApplicationInfo app{};
@@ -509,7 +605,8 @@ void createSwapchain() {
         info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
         info.queueFamilyIndexCount = 2;
         info.pQueueFamilyIndices = queueFamilyIndices;
-    } else {
+    }
+    else {
         info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
     }
 
@@ -654,29 +751,48 @@ void createGraphicsPipeline() {
 
     VkPipelineShaderStageCreateInfo stages[] = { vertStage, fragStage };
 
-    // Vertex input
-    VkVertexInputBindingDescription binding{};
-    binding.binding = 0;
-    binding.stride = sizeof(Vertex);
-    binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+    // Vertex input: binding 0 = per-vertex, binding 1 = per-instance
+    VkVertexInputBindingDescription bindings[2]{};
 
-    VkVertexInputAttributeDescription attributes[2]{};
+    bindings[0].binding = 0;
+    bindings[0].stride = sizeof(Vertex);
+    bindings[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
+    bindings[1].binding = 1;
+    bindings[1].stride = sizeof(InstanceData);
+    bindings[1].inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
+
+    VkVertexInputAttributeDescription attributes[4]{};
+
+    // Per-vertex position
     attributes[0].binding = 0;
     attributes[0].location = 0;
     attributes[0].format = VK_FORMAT_R32G32_SFLOAT;
     attributes[0].offset = offsetof(Vertex, pos);
 
+    // Per-vertex color
     attributes[1].binding = 0;
     attributes[1].location = 1;
     attributes[1].format = VK_FORMAT_R32G32B32_SFLOAT;
     attributes[1].offset = offsetof(Vertex, color);
 
+    // Per-instance offset
+    attributes[2].binding = 1;
+    attributes[2].location = 2;
+    attributes[2].format = VK_FORMAT_R32G32_SFLOAT;
+    attributes[2].offset = offsetof(InstanceData, offset);
+
+    // Per-instance color
+    attributes[3].binding = 1;
+    attributes[3].location = 3;
+    attributes[3].format = VK_FORMAT_R32G32B32_SFLOAT;
+    attributes[3].offset = offsetof(InstanceData, color);
+
     VkPipelineVertexInputStateCreateInfo vertexInput{};
     vertexInput.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    vertexInput.vertexBindingDescriptionCount = 1;
-    vertexInput.pVertexBindingDescriptions = &binding;
-    vertexInput.vertexAttributeDescriptionCount = 2;
+    vertexInput.vertexBindingDescriptionCount = 2;
+    vertexInput.pVertexBindingDescriptions = bindings;
+    vertexInput.vertexAttributeDescriptionCount = 4;
     vertexInput.pVertexAttributeDescriptions = attributes;
 
     VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
@@ -810,7 +926,7 @@ void createCommandPool() {
 }
 
 // ====================================================================================
-// Vertex buffer
+// Buffers (vertex + instance)
 // ====================================================================================
 
 uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
@@ -863,6 +979,42 @@ void createVertexBuffer() {
     vkBindBufferMemory(g_device, g_vertexBuffer, g_vertexBufferMemory, 0);
 }
 
+void createInstanceBuffer() {
+    VkDeviceSize bufferSize = sizeof(InstanceData) * g_instances.size();
+
+    VkBufferCreateInfo bufferInfo{};
+    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bufferInfo.size = bufferSize;
+    bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+    if (vkCreateBuffer(g_device, &bufferInfo, nullptr, &g_instanceBuffer) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to create instance buffer");
+    }
+
+    VkMemoryRequirements req{};
+    vkGetBufferMemoryRequirements(g_device, g_instanceBuffer, &req);
+
+    VkMemoryAllocateInfo alloc{};
+    alloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    alloc.allocationSize = req.size;
+    alloc.memoryTypeIndex = findMemoryType(
+        req.memoryTypeBits,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+    );
+
+    if (vkAllocateMemory(g_device, &alloc, nullptr, &g_instanceBufferMemory) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to allocate instance buffer memory");
+    }
+
+    void* data = nullptr;
+    vkMapMemory(g_device, g_instanceBufferMemory, 0, bufferSize, 0, &data);
+    std::memcpy(data, g_instances.data(), static_cast<size_t>(bufferSize));
+    vkUnmapMemory(g_device, g_instanceBufferMemory);
+
+    vkBindBufferMemory(g_device, g_instanceBuffer, g_instanceBufferMemory, 0);
+}
+
 // ====================================================================================
 // Command buffers + sync
 // ====================================================================================
@@ -904,11 +1056,15 @@ void createCommandBuffers() {
 
         vkCmdBindPipeline(g_commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, g_graphicsPipeline);
 
-        VkBuffer vertexBuffers[] = { g_vertexBuffer };
-        VkDeviceSize offsets[] = { 0 };
-        vkCmdBindVertexBuffers(g_commandBuffers[i], 0, 1, vertexBuffers, offsets);
+        VkBuffer vertexBuffers[] = { g_vertexBuffer, g_instanceBuffer };
+        VkDeviceSize offsets[] = { 0, 0 };
+        vkCmdBindVertexBuffers(g_commandBuffers[i], 0, 2, vertexBuffers, offsets);
 
-        vkCmdDraw(g_commandBuffers[i], static_cast<uint32_t>(g_vertices.size()), 1, 0, 0);
+        vkCmdDraw(g_commandBuffers[i],
+                  static_cast<uint32_t>(g_vertices.size()),
+                  static_cast<uint32_t>(g_instances.size()),
+                  0,
+                  0);
 
         vkCmdEndRenderPass(g_commandBuffers[i]);
 
@@ -1017,6 +1173,13 @@ void cleanup() {
     }
     if (g_vertexBufferMemory != VK_NULL_HANDLE) {
         vkFreeMemory(g_device, g_vertexBufferMemory, nullptr);
+    }
+
+    if (g_instanceBuffer != VK_NULL_HANDLE) {
+        vkDestroyBuffer(g_device, g_instanceBuffer, nullptr);
+    }
+    if (g_instanceBufferMemory != VK_NULL_HANDLE) {
+        vkFreeMemory(g_device, g_instanceBufferMemory, nullptr);
     }
 
     if (g_graphicsPipeline != VK_NULL_HANDLE) {
