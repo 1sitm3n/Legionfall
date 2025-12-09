@@ -118,6 +118,10 @@ double g_lastFrameMs  = 0.0;
 // Toggle to compare single-threaded vs parallel updates
 bool g_useParallelUpdate = true;
 
+// Toggle to add a heavier per-instance CPU workload
+bool g_useHeavyWork = false;
+
+
 // ====================================================================================
 // Helper structs for Vulkan
 // ====================================================================================
@@ -320,6 +324,13 @@ void mainLoop() {
             std::cout << "Parallel update toggled to: "
                       << (g_useParallelUpdate ? "ON" : "OFF") << std::endl;
         }
+
+        if (GetAsyncKeyState('H') & 0x0001) {
+    g_useHeavyWork = !g_useHeavyWork;
+    std::cout << "Heavy work mode toggled to: "
+              << (g_useHeavyWork ? "ON" : "OFF") << std::endl;
+        }
+
     }
 }
 
@@ -395,60 +406,78 @@ void updateInstances(float dt) {
 
     const float span = 1.8f;
 
+    auto updateOne = [span](uint32_t i, float timeNow) {
+        uint32_t x = i % INSTANCE_GRID_X;
+        uint32_t y = i / INSTANCE_GRID_X;
+
+        float fx = (static_cast<float>(x) / (INSTANCE_GRID_X - 1)) - 0.5f;
+        float fy = (static_cast<float>(y) / (INSTANCE_GRID_Y - 1)) - 0.5f;
+
+        float baseX = fx * span;
+        float baseY = fy * span;
+
+        float phase = static_cast<float>(i) * 0.15f;
+
+        // Light work: a single trig pass
+        float offsetX = baseX + 0.05f * std::sin(timeNow * 2.0f + phase);
+        float offsetY = baseY + 0.05f * std::cos(timeNow * 2.0f + phase);
+
+        if (g_useHeavyWork) {
+            // Heavier CPU workload: do some extra iterative math on the same data.
+            // This is intentionally branch-free and pure math to mimic a "compute" kernel.
+            float accX = offsetX;
+            float accY = offsetY;
+
+            // 10 iterations of non-trivial trig; enough to see scaling,
+            // not enough to freeze a 4090.
+            for (int iter = 0; iter < 10; ++iter) {
+                float t = timeNow * (1.0f + 0.05f * iter) + phase;
+                float s = std::sin(t);
+                float c = std::cos(t);
+
+                accX = accX * 0.9f + 0.1f * (baseX + 0.1f * s);
+                accY = accY * 0.9f + 0.1f * (baseY + 0.1f * c);
+            }
+
+            offsetX = accX;
+            offsetY = accY;
+        }
+
+        g_instances[i].offset[0] = offsetX;
+        g_instances[i].offset[1] = offsetY;
+    };
+
+    const float timeNow = g_time;
+
+    // Single-threaded path
     if (!g_useParallelUpdate || !g_jobSystem) {
-        // Single-threaded path
         for (uint32_t i = 0; i < total; ++i) {
-            uint32_t x = i % INSTANCE_GRID_X;
-            uint32_t y = i / INSTANCE_GRID_X;
-
-            float fx = (static_cast<float>(x) / (INSTANCE_GRID_X - 1)) - 0.5f;
-            float fy = (static_cast<float>(y) / (INSTANCE_GRID_Y - 1)) - 0.5f;
-
-            float baseX = fx * span;
-            float baseY = fy * span;
-
-            float phase   = static_cast<float>(i) * 0.15f;
-            float timeNow = g_time;
-
-            g_instances[i].offset[0] = baseX + 0.05f * std::sin(timeNow * 2.0f + phase);
-            g_instances[i].offset[1] = baseY + 0.05f * std::cos(timeNow * 2.0f + phase);
+            updateOne(i, timeNow);
         }
         return;
     }
 
-    // Parallel path
+    // Parallel path using JobSystem
     uint32_t threads = g_jobSystem->threadCount();
     if (threads == 0) threads = 1;
 
     const uint32_t chunkSize = (total + threads - 1) / threads;
-    const float    timeNow   = g_time;
 
     for (uint32_t t = 0; t < threads; ++t) {
         uint32_t begin = t * chunkSize;
         if (begin >= total) break;
         uint32_t end = std::min(begin + chunkSize, total);
 
-        g_jobSystem->schedule([begin, end, span, timeNow]() {
+        g_jobSystem->schedule([begin, end, timeNow, updateOne]() {
             for (uint32_t i = begin; i < end; ++i) {
-                uint32_t x = i % INSTANCE_GRID_X;
-                uint32_t y = i / INSTANCE_GRID_X;
-
-                float fx = (static_cast<float>(x) / (INSTANCE_GRID_X - 1)) - 0.5f;
-                float fy = (static_cast<float>(y) / (INSTANCE_GRID_Y - 1)) - 0.5f;
-
-                float baseX = fx * span;
-                float baseY = fy * span;
-
-                float phase = static_cast<float>(i) * 0.15f;
-
-                g_instances[i].offset[0] = baseX + 0.05f * std::sin(timeNow * 2.0f + phase);
-                g_instances[i].offset[1] = baseY + 0.05f * std::cos(timeNow * 2.0f + phase);
+                updateOne(i, timeNow);
             }
         });
     }
 
     g_jobSystem->wait();
 }
+
 
 void updateInstanceBuffer() {
     VkDeviceSize bufferSize = sizeof(InstanceData) * g_instances.size();
