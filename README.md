@@ -93,6 +93,3 @@ On the rendering side, the pipeline could be upgraded to use a proper uniform bu
 
 Even in its current state, the project already provides a strong demonstration of C++ engine-style code, Vulkan proficiency, and practical multithreading.
 
-
-cd build
-cmake ..
