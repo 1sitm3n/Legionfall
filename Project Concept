@@ -1,9 +1,0 @@
-The game is a top-down real-time “micro-strategy” arena, somewhere between a crowd simulator and a minimalist action game. 
-You control a single hero or small squad fighting waves of hundreds to thousands of enemies in real time. 
-The emphasis is not on content but on scale: huge swarms, heavy use of particles, and responsive controls at a locked high framerate.
-
-Crucially, everything runs on C++ and Vulkan code.
-No engine, no framework beyond whatever small libraries you choose for windowing and input.
-Under the hood it is a bespoke, data-oriented engine with a narrow feature set: one level, a handful of enemy types, with a focus on extreme efficiency and clean architecture.
-
-The “Wow” factor I am planning for is that I can visibly show ten thousand enemies pathing and animating simultaneously, bullets everywhere, fluent camera motion and post-processing, while profiling overlays show CPU and GPU timelines, frame times, and how my multithreading and GPU work distribution keeps the game smooth.

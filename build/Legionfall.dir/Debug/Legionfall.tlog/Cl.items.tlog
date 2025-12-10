@@ -1,1 +1,4 @@
-C:\Users\memet\Desktop\Legionfall\src\platform\main.cpp;C:\Users\memet\Desktop\Legionfall\build\Legionfall.dir\Debug\main.obj
+C:\Users\memet\Desktop\Legionfall\src\platform\Win32VulkanApp.cpp;C:\Users\memet\Desktop\Legionfall\build\Legionfall.dir\Debug\Win32VulkanApp.obj
+C:\Users\memet\Desktop\Legionfall\src\render\Renderer.cpp;C:\Users\memet\Desktop\Legionfall\build\Legionfall.dir\Debug\Renderer.obj
+C:\Users\memet\Desktop\Legionfall\src\core\JobSystem.cpp;C:\Users\memet\Desktop\Legionfall\build\Legionfall.dir\Debug\JobSystem.obj
+C:\Users\memet\Desktop\Legionfall\src\core\Game.cpp;C:\Users\memet\Desktop\Legionfall\build\Legionfall.dir\Debug\Game.obj

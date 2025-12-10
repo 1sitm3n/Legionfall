@@ -35,6 +35,7 @@ events:
     found: "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeCXXCompilerId.cpp.in"
     search_context:
       ENV{PATH}:
+        - "C:\\VulkanSDK\\1.4.328.1\\Bin"
         - "C:\\windows\\system32"
         - "C:\\windows"
         - "C:\\windows\\System32\\Wbem"
@@ -72,7 +73,7 @@ events:
       The output was:
       0
       MSBuild version 17.14.10+8b8e13593 for .NET Framework
-      Build started 09/12/2025 00:34:18.
+      Build started 10/12/2025 15:03:58.
       
       Project "C:\\Users\\memet\\Desktop\\Legionfall\\build\\CMakeFiles\\4.2.0\\CompilerIdCXX\\CompilerIdCXX.vcxproj" on node 1 (default targets).
       PrepareForBuild:
@@ -101,7 +102,7 @@ events:
           0 Warning(s)
           0 Error(s)
       
-      Time Elapsed 00:00:01.16
+      Time Elapsed 00:00:00.56
       
       
       Compilation of the CXX compiler identification source "CMakeCXXCompilerId.cpp" produced "CompilerIdCXX.exe"
@@ -134,6 +135,7 @@ events:
       - "link"
     candidate_directories:
       - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/"
+      - "C:/VulkanSDK/1.4.328.1/Bin/"
       - "C:/WINDOWS/System32/"
       - "C:/WINDOWS/"
       - "C:/WINDOWS/System32/wbem/"
@@ -155,6 +157,7 @@ events:
     found: "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/link.exe"
     search_context:
       ENV{PATH}:
+        - "C:\\VulkanSDK\\1.4.328.1\\Bin"
         - "C:\\windows\\system32"
         - "C:\\windows"
         - "C:\\windows\\System32\\Wbem"
@@ -199,6 +202,7 @@ events:
       - "lld-link"
     candidate_directories:
       - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/"
+      - "C:/VulkanSDK/1.4.328.1/Bin/"
       - "C:/WINDOWS/System32/"
       - "C:/WINDOWS/"
       - "C:/WINDOWS/System32/wbem/"
@@ -219,6 +223,9 @@ events:
       - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/lld-link.com"
       - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/lld-link.exe"
       - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/lld-link"
+      - "C:/VulkanSDK/1.4.328.1/Bin/lld-link.com"
+      - "C:/VulkanSDK/1.4.328.1/Bin/lld-link.exe"
+      - "C:/VulkanSDK/1.4.328.1/Bin/lld-link"
       - "C:/WINDOWS/System32/lld-link.com"
       - "C:/WINDOWS/System32/lld-link.exe"
       - "C:/WINDOWS/System32/lld-link"
@@ -270,6 +277,7 @@ events:
     found: false
     search_context:
       ENV{PATH}:
+        - "C:\\VulkanSDK\\1.4.328.1\\Bin"
         - "C:\\windows\\system32"
         - "C:\\windows"
         - "C:\\windows\\System32\\Wbem"
@@ -312,6 +320,7 @@ events:
       - "link"
     candidate_directories:
       - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/"
+      - "C:/VulkanSDK/1.4.328.1/Bin/"
       - "C:/WINDOWS/System32/"
       - "C:/WINDOWS/"
       - "C:/WINDOWS/System32/wbem/"
@@ -333,6 +342,7 @@ events:
     found: "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/link.exe"
     search_context:
       ENV{PATH}:
+        - "C:\\VulkanSDK\\1.4.328.1\\Bin"
         - "C:\\windows\\system32"
         - "C:\\windows"
         - "C:\\windows\\System32\\Wbem"
@@ -375,6 +385,7 @@ events:
       - "mt"
     candidate_directories:
       - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/"
+      - "C:/VulkanSDK/1.4.328.1/Bin/"
       - "C:/WINDOWS/System32/"
       - "C:/WINDOWS/"
       - "C:/WINDOWS/System32/wbem/"
@@ -395,6 +406,9 @@ events:
       - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/mt.com"
       - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/mt.exe"
       - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/mt"
+      - "C:/VulkanSDK/1.4.328.1/Bin/mt.com"
+      - "C:/VulkanSDK/1.4.328.1/Bin/mt.exe"
+      - "C:/VulkanSDK/1.4.328.1/Bin/mt"
       - "C:/WINDOWS/System32/mt.com"
       - "C:/WINDOWS/System32/mt.exe"
       - "C:/WINDOWS/System32/mt"
@@ -446,6 +460,7 @@ events:
     found: false
     search_context:
       ENV{PATH}:
+        - "C:\\VulkanSDK\\1.4.328.1\\Bin"
         - "C:\\windows\\system32"
         - "C:\\windows"
         - "C:\\windows\\System32\\Wbem"
@@ -488,6 +503,7 @@ events:
       - "lib"
     candidate_directories:
       - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/"
+      - "C:/VulkanSDK/1.4.328.1/Bin/"
       - "C:/WINDOWS/System32/"
       - "C:/WINDOWS/"
       - "C:/WINDOWS/System32/wbem/"
@@ -509,6 +525,7 @@ events:
     found: "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/lib.exe"
     search_context:
       ENV{PATH}:
+        - "C:\\VulkanSDK\\1.4.328.1\\Bin"
         - "C:\\windows\\system32"
         - "C:\\windows"
         - "C:\\windows\\System32\\Wbem"
@@ -553,6 +570,7 @@ events:
     names:
       - "rc"
     candidate_directories:
+      - "C:/VulkanSDK/1.4.328.1/Bin/"
       - "C:/WINDOWS/System32/"
       - "C:/WINDOWS/"
       - "C:/WINDOWS/System32/wbem/"
@@ -578,10 +596,13 @@ events:
       - "C:/Program Files/CMake/bin/"
       - "C:/Program Files/CMake/sbin/"
       - "C:/Program Files/CMake/"
-      - "C:/Program Files (x86)/Legionfall/bin/"
-      - "C:/Program Files (x86)/Legionfall/sbin/"
-      - "C:/Program Files (x86)/Legionfall/"
+      - "C:/Program Files/Legionfall/bin/"
+      - "C:/Program Files/Legionfall/sbin/"
+      - "C:/Program Files/Legionfall/"
     searched_directories:
+      - "C:/VulkanSDK/1.4.328.1/Bin/rc.com"
+      - "C:/VulkanSDK/1.4.328.1/Bin/rc.exe"
+      - "C:/VulkanSDK/1.4.328.1/Bin/rc"
       - "C:/WINDOWS/System32/rc.com"
       - "C:/WINDOWS/System32/rc.exe"
       - "C:/WINDOWS/System32/rc"
@@ -657,18 +678,19 @@ events:
       - "C:/Program Files/CMake/rc.com"
       - "C:/Program Files/CMake/rc.exe"
       - "C:/Program Files/CMake/rc"
-      - "C:/Program Files (x86)/Legionfall/bin/rc.com"
-      - "C:/Program Files (x86)/Legionfall/bin/rc.exe"
-      - "C:/Program Files (x86)/Legionfall/bin/rc"
-      - "C:/Program Files (x86)/Legionfall/sbin/rc.com"
-      - "C:/Program Files (x86)/Legionfall/sbin/rc.exe"
-      - "C:/Program Files (x86)/Legionfall/sbin/rc"
-      - "C:/Program Files (x86)/Legionfall/rc.com"
-      - "C:/Program Files (x86)/Legionfall/rc.exe"
-      - "C:/Program Files (x86)/Legionfall/rc"
+      - "C:/Program Files/Legionfall/bin/rc.com"
+      - "C:/Program Files/Legionfall/bin/rc.exe"
+      - "C:/Program Files/Legionfall/bin/rc"
+      - "C:/Program Files/Legionfall/sbin/rc.com"
+      - "C:/Program Files/Legionfall/sbin/rc.exe"
+      - "C:/Program Files/Legionfall/sbin/rc"
+      - "C:/Program Files/Legionfall/rc.com"
+      - "C:/Program Files/Legionfall/rc.exe"
+      - "C:/Program Files/Legionfall/rc"
     found: false
     search_context:
       ENV{PATH}:
+        - "C:\\VulkanSDK\\1.4.328.1\\Bin"
         - "C:\\windows\\system32"
         - "C:\\windows"
         - "C:\\windows\\System32\\Wbem"
@@ -690,12 +712,12 @@ events:
         - "C:\\Users\\memet\\AppData\\Local\\Microsoft\\WindowsApps"
         - "C:\\Users\\memet\\AppData\\Local\\Programs\\Microsoft VS Code\\bin"
         - "C:\\Users\\memet\\.dotnet\\tools"
-      CMAKE_INSTALL_PREFIX: "C:/Program Files (x86)/Legionfall"
+      CMAKE_INSTALL_PREFIX: "C:/Program Files/Legionfall"
       CMAKE_SYSTEM_PREFIX_PATH:
         - "C:/Program Files"
         - "C:/Program Files (x86)"
         - "C:/Program Files/CMake"
-        - "C:/Program Files (x86)/Legionfall"
+        - "C:/Program Files/Legionfall"
   -
     kind: "try_compile-v1"
     backtrace:
@@ -705,8 +727,8 @@ events:
     checks:
       - "Detecting CXX compiler ABI info"
     directories:
-      source: "C:/Users/memet/Desktop/Legionfall/build/CMakeFiles/CMakeScratch/TryCompile-vgjcya"
-      binary: "C:/Users/memet/Desktop/Legionfall/build/CMakeFiles/CMakeScratch/TryCompile-vgjcya"
+      source: "C:/Users/memet/Desktop/Legionfall/build/CMakeFiles/CMakeScratch/TryCompile-5xsntd"
+      binary: "C:/Users/memet/Desktop/Legionfall/build/CMakeFiles/CMakeScratch/TryCompile-5xsntd"
     cmakeVariables:
       CMAKE_CXX_FLAGS: "/DWIN32 /D_WINDOWS /EHsc"
       CMAKE_CXX_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
@@ -716,39 +738,39 @@ events:
       variable: "CMAKE_CXX_ABI_COMPILED"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/memet/Desktop/Legionfall/build/CMakeFiles/CMakeScratch/TryCompile-vgjcya'
+        Change Dir: 'C:/Users/memet/Desktop/Legionfall/build/CMakeFiles/CMakeScratch/TryCompile-5xsntd'
         
-        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_fe48e.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_825f6.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
         MSBuild version 17.14.10+8b8e13593 for .NET Framework
-        Build started 09/12/2025 00:34:19.
+        Build started 10/12/2025 15:03:59.
         
-        Project "C:\\Users\\memet\\Desktop\\Legionfall\\build\\CMakeFiles\\CMakeScratch\\TryCompile-vgjcya\\cmTC_fe48e.vcxproj" on node 1 (default targets).
+        Project "C:\\Users\\memet\\Desktop\\Legionfall\\build\\CMakeFiles\\CMakeScratch\\TryCompile-5xsntd\\cmTC_825f6.vcxproj" on node 1 (default targets).
         PrepareForBuild:
           Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
-          Creating directory "C:\\Users\\memet\\Desktop\\Legionfall\\build\\CMakeFiles\\CMakeScratch\\TryCompile-vgjcya\\Debug\\".
-          Creating directory "cmTC_fe48e.dir\\Debug\\cmTC_fe48e.tlog\\".
+          Creating directory "C:\\Users\\memet\\Desktop\\Legionfall\\build\\CMakeFiles\\CMakeScratch\\TryCompile-5xsntd\\Debug\\".
+          Creating directory "cmTC_825f6.dir\\Debug\\cmTC_825f6.tlog\\".
         InitializeBuildStatus:
-          Creating "cmTC_fe48e.dir\\Debug\\cmTC_fe48e.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
-          Touching "cmTC_fe48e.dir\\Debug\\cmTC_fe48e.tlog\\unsuccessfulbuild".
+          Creating "cmTC_825f6.dir\\Debug\\cmTC_825f6.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_825f6.dir\\Debug\\cmTC_825f6.tlog\\unsuccessfulbuild".
         ClCompile:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /Fo"cmTC_fe48e.dir\\Debug\\\\" /Fd"cmTC_fe48e.dir\\Debug\\vc143.pdb" /external:W1 /TP /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.2\\Modules\\CMakeCXXCompilerABI.cpp"
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /Fo"cmTC_825f6.dir\\Debug\\\\" /Fd"cmTC_825f6.dir\\Debug\\vc143.pdb" /external:W1 /TP /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.2\\Modules\\CMakeCXXCompilerABI.cpp"
           Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35209 for x64
           Copyright (C) Microsoft Corporation.  All rights reserved.
-          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /Fo"cmTC_fe48e.dir\\Debug\\\\" /Fd"cmTC_fe48e.dir\\Debug\\vc143.pdb" /external:W1 /TP /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.2\\Modules\\CMakeCXXCompilerABI.cpp"
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /Fo"cmTC_825f6.dir\\Debug\\\\" /Fd"cmTC_825f6.dir\\Debug\\vc143.pdb" /external:W1 /TP /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.2\\Modules\\CMakeCXXCompilerABI.cpp"
           CMakeCXXCompilerABI.cpp
         Link:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Users\\memet\\Desktop\\Legionfall\\build\\CMakeFiles\\CMakeScratch\\TryCompile-vgjcya\\Debug\\cmTC_fe48e.exe" /INCREMENTAL /ILK:"cmTC_fe48e.dir\\Debug\\cmTC_fe48e.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/memet/Desktop/Legionfall/build/CMakeFiles/CMakeScratch/TryCompile-vgjcya/Debug/cmTC_fe48e.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Users/memet/Desktop/Legionfall/build/CMakeFiles/CMakeScratch/TryCompile-vgjcya/Debug/cmTC_fe48e.lib" /MACHINE:X64  /machine:x64 cmTC_fe48e.dir\\Debug\\CMakeCXXCompilerABI.obj
-          cmTC_fe48e.vcxproj -> C:\\Users\\memet\\Desktop\\Legionfall\\build\\CMakeFiles\\CMakeScratch\\TryCompile-vgjcya\\Debug\\cmTC_fe48e.exe
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Users\\memet\\Desktop\\Legionfall\\build\\CMakeFiles\\CMakeScratch\\TryCompile-5xsntd\\Debug\\cmTC_825f6.exe" /INCREMENTAL /ILK:"cmTC_825f6.dir\\Debug\\cmTC_825f6.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/memet/Desktop/Legionfall/build/CMakeFiles/CMakeScratch/TryCompile-5xsntd/Debug/cmTC_825f6.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Users/memet/Desktop/Legionfall/build/CMakeFiles/CMakeScratch/TryCompile-5xsntd/Debug/cmTC_825f6.lib" /MACHINE:X64  /machine:x64 cmTC_825f6.dir\\Debug\\CMakeCXXCompilerABI.obj
+          cmTC_825f6.vcxproj -> C:\\Users\\memet\\Desktop\\Legionfall\\build\\CMakeFiles\\CMakeScratch\\TryCompile-5xsntd\\Debug\\cmTC_825f6.exe
         FinalizeBuildStatus:
-          Deleting file "cmTC_fe48e.dir\\Debug\\cmTC_fe48e.tlog\\unsuccessfulbuild".
-          Touching "cmTC_fe48e.dir\\Debug\\cmTC_fe48e.tlog\\cmTC_fe48e.lastbuildstate".
-        Done Building Project "C:\\Users\\memet\\Desktop\\Legionfall\\build\\CMakeFiles\\CMakeScratch\\TryCompile-vgjcya\\cmTC_fe48e.vcxproj" (default targets).
+          Deleting file "cmTC_825f6.dir\\Debug\\cmTC_825f6.tlog\\unsuccessfulbuild".
+          Touching "cmTC_825f6.dir\\Debug\\cmTC_825f6.tlog\\cmTC_825f6.lastbuildstate".
+        Done Building Project "C:\\Users\\memet\\Desktop\\Legionfall\\build\\CMakeFiles\\CMakeScratch\\TryCompile-5xsntd\\cmTC_825f6.vcxproj" (default targets).
         
         Build succeeded.
             0 Warning(s)
             0 Error(s)
         
-        Time Elapsed 00:00:00.58
+        Time Elapsed 00:00:00.40
         
       exitCode: 0
   -
@@ -783,7 +805,7 @@ events:
     kind: "find-v1"
     backtrace:
       - "C:/Program Files/CMake/share/cmake-4.2/Modules/FindVulkan.cmake:392 (find_path)"
-      - "CMakeLists.txt:7 (find_package)"
+      - "CMakeLists.txt:11 (find_package)"
     mode: "path"
     variable: "Vulkan_INCLUDE_DIR"
     description: "Path to a file."
@@ -798,7 +820,8 @@ events:
     names:
       - "vulkan/vulkan.h"
     candidate_directories:
-      - "/include/"
+      - "C:/VulkanSDK/1.4.328.1/include/"
+      - "C:/VulkanSDK/1.4.328.1/Bin/"
       - "C:/WINDOWS/System32/"
       - "C:/WINDOWS/"
       - "C:/WINDOWS/System32/wbem/"
@@ -821,37 +844,12 @@ events:
       - "C:/Program Files (x86)/"
       - "C:/Program Files/CMake/include/"
       - "C:/Program Files/CMake/"
-      - "C:/Program Files (x86)/Legionfall/include/"
-      - "C:/Program Files (x86)/Legionfall/"
-    searched_directories:
-      - "/include/vulkan/vulkan.h"
-      - "C:/WINDOWS/System32/vulkan/vulkan.h"
-      - "C:/WINDOWS/vulkan/vulkan.h"
-      - "C:/WINDOWS/System32/wbem/vulkan/vulkan.h"
-      - "C:/WINDOWS/System32/WindowsPowerShell/v1.0/vulkan/vulkan.h"
-      - "C:/WINDOWS/System32/OpenSSH/vulkan/vulkan.h"
-      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/vulkan/vulkan.h"
-      - "C:/Program Files/NVIDIA Corporation/NVIDIA NvDLISR/vulkan/vulkan.h"
-      - "C:/Program Files/Microsoft SQL Server/150/Tools/Binn/vulkan/vulkan.h"
-      - "C:/Program Files/Microsoft SQL Server/Client SDK/ODBC/170/Tools/Binn/vulkan/vulkan.h"
-      - "C:/Program Files/dotnet/vulkan/vulkan.h"
-      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/vulkan/vulkan.h"
-      - "C:/Program Files/Git/cmd/vulkan/vulkan.h"
-      - "C:/Program Files/CMake/bin/vulkan/vulkan.h"
-      - "C:/Users/memet/AppData/Local/Microsoft/WindowsApps/vulkan/vulkan.h"
-      - "C:/Users/memet/AppData/Local/Programs/Microsoft VS Code/bin/vulkan/vulkan.h"
-      - "C:/Users/memet/.dotnet/tools/vulkan/vulkan.h"
-      - "C:/Program Files/include/vulkan/vulkan.h"
-      - "C:/Program Files/vulkan/vulkan.h"
-      - "C:/Program Files (x86)/include/vulkan/vulkan.h"
-      - "C:/Program Files (x86)/vulkan/vulkan.h"
-      - "C:/Program Files/CMake/include/vulkan/vulkan.h"
-      - "C:/Program Files/CMake/vulkan/vulkan.h"
-      - "C:/Program Files (x86)/Legionfall/include/vulkan/vulkan.h"
-      - "C:/Program Files (x86)/Legionfall/vulkan/vulkan.h"
-    found: false
+      - "C:/Program Files/Legionfall/include/"
+      - "C:/Program Files/Legionfall/"
+    found: "C:/VulkanSDK/1.4.328.1/include/"
     search_context:
       ENV{PATH}:
+        - "C:\\VulkanSDK\\1.4.328.1\\Bin"
         - "C:\\windows\\system32"
         - "C:\\windows"
         - "C:\\windows\\System32\\Wbem"
@@ -873,17 +871,17 @@ events:
         - "C:\\Users\\memet\\AppData\\Local\\Microsoft\\WindowsApps"
         - "C:\\Users\\memet\\AppData\\Local\\Programs\\Microsoft VS Code\\bin"
         - "C:\\Users\\memet\\.dotnet\\tools"
-      CMAKE_INSTALL_PREFIX: "C:/Program Files (x86)/Legionfall"
+      CMAKE_INSTALL_PREFIX: "C:/Program Files/Legionfall"
       CMAKE_SYSTEM_PREFIX_PATH:
         - "C:/Program Files"
         - "C:/Program Files (x86)"
         - "C:/Program Files/CMake"
-        - "C:/Program Files (x86)/Legionfall"
+        - "C:/Program Files/Legionfall"
   -
     kind: "find-v1"
     backtrace:
       - "C:/Program Files/CMake/share/cmake-4.2/Modules/FindVulkan.cmake:399 (find_library)"
-      - "CMakeLists.txt:7 (find_package)"
+      - "CMakeLists.txt:11 (find_package)"
     mode: "library"
     variable: "Vulkan_LIBRARY"
     description: "Path to a library."
@@ -898,8 +896,9 @@ events:
     names:
       - "vulkan-1"
     candidate_directories:
-      - "/lib/"
-      - "/bin/"
+      - "C:/VulkanSDK/1.4.328.1/lib/"
+      - "C:/VulkanSDK/1.4.328.1/bin/"
+      - "C:/VulkanSDK/1.4.328.1/Bin/"
       - "C:/WINDOWS/System32/"
       - "C:/WINDOWS/"
       - "C:/WINDOWS/System32/wbem/"
@@ -922,40 +921,14 @@ events:
       - "C:/Program Files (x86)/"
       - "C:/Program Files/CMake/lib/"
       - "C:/Program Files/CMake/"
-      - "C:/Program Files (x86)/Legionfall/lib/"
-      - "C:/Program Files (x86)/Legionfall/"
-      - "C:/Program Files (x86)/Legionfall/bin/"
-    searched_directories:
-      - "/lib/"
+      - "C:/Program Files/Legionfall/lib/"
+      - "C:/Program Files/Legionfall/"
+      - "C:/Program Files/Legionfall/bin/"
       - "/bin/"
-      - "C:/WINDOWS/System32/"
-      - "C:/WINDOWS/"
-      - "C:/WINDOWS/System32/wbem/"
-      - "C:/WINDOWS/System32/WindowsPowerShell/v1.0/"
-      - "C:/WINDOWS/System32/OpenSSH/"
-      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
-      - "C:/Program Files/NVIDIA Corporation/NVIDIA NvDLISR/"
-      - "C:/Program Files/Microsoft SQL Server/150/Tools/Binn/"
-      - "C:/Program Files/Microsoft SQL Server/Client SDK/ODBC/170/Tools/Binn/"
-      - "C:/Program Files/dotnet/"
-      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/"
-      - "C:/Program Files/Git/cmd/"
-      - "C:/Program Files/CMake/bin/"
-      - "C:/Users/memet/AppData/Local/Microsoft/WindowsApps/"
-      - "C:/Users/memet/AppData/Local/Programs/Microsoft VS Code/bin/"
-      - "C:/Users/memet/.dotnet/tools/"
-      - "C:/Program Files/lib/"
-      - "C:/Program Files/"
-      - "C:/Program Files (x86)/lib/"
-      - "C:/Program Files (x86)/"
-      - "C:/Program Files/CMake/lib/"
-      - "C:/Program Files/CMake/"
-      - "C:/Program Files (x86)/Legionfall/lib/"
-      - "C:/Program Files (x86)/Legionfall/"
-      - "C:/Program Files (x86)/Legionfall/bin/"
-    found: false
+    found: "C:/VulkanSDK/1.4.328.1/Lib/vulkan-1.lib"
     search_context:
       ENV{PATH}:
+        - "C:\\VulkanSDK\\1.4.328.1\\Bin"
         - "C:\\windows\\system32"
         - "C:\\windows"
         - "C:\\windows\\System32\\Wbem"
@@ -977,21 +950,21 @@ events:
         - "C:\\Users\\memet\\AppData\\Local\\Microsoft\\WindowsApps"
         - "C:\\Users\\memet\\AppData\\Local\\Programs\\Microsoft VS Code\\bin"
         - "C:\\Users\\memet\\.dotnet\\tools"
-      CMAKE_INSTALL_PREFIX: "C:/Program Files (x86)/Legionfall"
+      CMAKE_INSTALL_PREFIX: "C:/Program Files/Legionfall"
       CMAKE_SYSTEM_PREFIX_PATH:
         - "C:/Program Files"
         - "C:/Program Files (x86)"
         - "C:/Program Files/CMake"
-        - "C:/Program Files (x86)/Legionfall"
+        - "C:/Program Files/Legionfall"
       CMAKE_SYSTEM_LIBRARY_PATH:
-        - "C:/Program Files (x86)/Legionfall/bin"
+        - "C:/Program Files/Legionfall/bin"
         - "C:/Program Files/CMake/bin"
         - "/bin"
   -
     kind: "find-v1"
     backtrace:
       - "C:/Program Files/CMake/share/cmake-4.2/Modules/FindVulkan.cmake:407 (find_program)"
-      - "CMakeLists.txt:7 (find_package)"
+      - "CMakeLists.txt:11 (find_package)"
     mode: "program"
     variable: "Vulkan_GLSLC_EXECUTABLE"
     description: "Path to a program."
@@ -1006,7 +979,8 @@ events:
     names:
       - "glslc"
     candidate_directories:
-      - "/bin/"
+      - "C:/VulkanSDK/1.4.328.1/bin/"
+      - "C:/VulkanSDK/1.4.328.1/Bin/"
       - "C:/WINDOWS/System32/"
       - "C:/WINDOWS/"
       - "C:/WINDOWS/System32/wbem/"
@@ -1032,100 +1006,15 @@ events:
       - "C:/Program Files/CMake/bin/"
       - "C:/Program Files/CMake/sbin/"
       - "C:/Program Files/CMake/"
-      - "C:/Program Files (x86)/Legionfall/bin/"
-      - "C:/Program Files (x86)/Legionfall/sbin/"
-      - "C:/Program Files (x86)/Legionfall/"
+      - "C:/Program Files/Legionfall/bin/"
+      - "C:/Program Files/Legionfall/sbin/"
+      - "C:/Program Files/Legionfall/"
     searched_directories:
-      - "/bin/glslc.com"
-      - "/bin/glslc.exe"
-      - "/bin/glslc"
-      - "C:/WINDOWS/System32/glslc.com"
-      - "C:/WINDOWS/System32/glslc.exe"
-      - "C:/WINDOWS/System32/glslc"
-      - "C:/WINDOWS/glslc.com"
-      - "C:/WINDOWS/glslc.exe"
-      - "C:/WINDOWS/glslc"
-      - "C:/WINDOWS/System32/wbem/glslc.com"
-      - "C:/WINDOWS/System32/wbem/glslc.exe"
-      - "C:/WINDOWS/System32/wbem/glslc"
-      - "C:/WINDOWS/System32/WindowsPowerShell/v1.0/glslc.com"
-      - "C:/WINDOWS/System32/WindowsPowerShell/v1.0/glslc.exe"
-      - "C:/WINDOWS/System32/WindowsPowerShell/v1.0/glslc"
-      - "C:/WINDOWS/System32/OpenSSH/glslc.com"
-      - "C:/WINDOWS/System32/OpenSSH/glslc.exe"
-      - "C:/WINDOWS/System32/OpenSSH/glslc"
-      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/glslc.com"
-      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/glslc.exe"
-      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/glslc"
-      - "C:/Program Files/NVIDIA Corporation/NVIDIA NvDLISR/glslc.com"
-      - "C:/Program Files/NVIDIA Corporation/NVIDIA NvDLISR/glslc.exe"
-      - "C:/Program Files/NVIDIA Corporation/NVIDIA NvDLISR/glslc"
-      - "C:/Program Files/Microsoft SQL Server/150/Tools/Binn/glslc.com"
-      - "C:/Program Files/Microsoft SQL Server/150/Tools/Binn/glslc.exe"
-      - "C:/Program Files/Microsoft SQL Server/150/Tools/Binn/glslc"
-      - "C:/Program Files/Microsoft SQL Server/Client SDK/ODBC/170/Tools/Binn/glslc.com"
-      - "C:/Program Files/Microsoft SQL Server/Client SDK/ODBC/170/Tools/Binn/glslc.exe"
-      - "C:/Program Files/Microsoft SQL Server/Client SDK/ODBC/170/Tools/Binn/glslc"
-      - "C:/Program Files/dotnet/glslc.com"
-      - "C:/Program Files/dotnet/glslc.exe"
-      - "C:/Program Files/dotnet/glslc"
-      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/glslc.com"
-      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/glslc.exe"
-      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/glslc"
-      - "C:/Program Files/Git/cmd/glslc.com"
-      - "C:/Program Files/Git/cmd/glslc.exe"
-      - "C:/Program Files/Git/cmd/glslc"
-      - "C:/Program Files/CMake/bin/glslc.com"
-      - "C:/Program Files/CMake/bin/glslc.exe"
-      - "C:/Program Files/CMake/bin/glslc"
-      - "C:/Users/memet/AppData/Local/Microsoft/WindowsApps/glslc.com"
-      - "C:/Users/memet/AppData/Local/Microsoft/WindowsApps/glslc.exe"
-      - "C:/Users/memet/AppData/Local/Microsoft/WindowsApps/glslc"
-      - "C:/Users/memet/AppData/Local/Programs/Microsoft VS Code/bin/glslc.com"
-      - "C:/Users/memet/AppData/Local/Programs/Microsoft VS Code/bin/glslc.exe"
-      - "C:/Users/memet/AppData/Local/Programs/Microsoft VS Code/bin/glslc"
-      - "C:/Users/memet/.dotnet/tools/glslc.com"
-      - "C:/Users/memet/.dotnet/tools/glslc.exe"
-      - "C:/Users/memet/.dotnet/tools/glslc"
-      - "C:/Program Files/bin/glslc.com"
-      - "C:/Program Files/bin/glslc.exe"
-      - "C:/Program Files/bin/glslc"
-      - "C:/Program Files/sbin/glslc.com"
-      - "C:/Program Files/sbin/glslc.exe"
-      - "C:/Program Files/sbin/glslc"
-      - "C:/Program Files/glslc.com"
-      - "C:/Program Files/glslc.exe"
-      - "C:/Program Files/glslc"
-      - "C:/Program Files (x86)/bin/glslc.com"
-      - "C:/Program Files (x86)/bin/glslc.exe"
-      - "C:/Program Files (x86)/bin/glslc"
-      - "C:/Program Files (x86)/sbin/glslc.com"
-      - "C:/Program Files (x86)/sbin/glslc.exe"
-      - "C:/Program Files (x86)/sbin/glslc"
-      - "C:/Program Files (x86)/glslc.com"
-      - "C:/Program Files (x86)/glslc.exe"
-      - "C:/Program Files (x86)/glslc"
-      - "C:/Program Files/CMake/bin/glslc.com"
-      - "C:/Program Files/CMake/bin/glslc.exe"
-      - "C:/Program Files/CMake/bin/glslc"
-      - "C:/Program Files/CMake/sbin/glslc.com"
-      - "C:/Program Files/CMake/sbin/glslc.exe"
-      - "C:/Program Files/CMake/sbin/glslc"
-      - "C:/Program Files/CMake/glslc.com"
-      - "C:/Program Files/CMake/glslc.exe"
-      - "C:/Program Files/CMake/glslc"
-      - "C:/Program Files (x86)/Legionfall/bin/glslc.com"
-      - "C:/Program Files (x86)/Legionfall/bin/glslc.exe"
-      - "C:/Program Files (x86)/Legionfall/bin/glslc"
-      - "C:/Program Files (x86)/Legionfall/sbin/glslc.com"
-      - "C:/Program Files (x86)/Legionfall/sbin/glslc.exe"
-      - "C:/Program Files (x86)/Legionfall/sbin/glslc"
-      - "C:/Program Files (x86)/Legionfall/glslc.com"
-      - "C:/Program Files (x86)/Legionfall/glslc.exe"
-      - "C:/Program Files (x86)/Legionfall/glslc"
-    found: false
+      - "C:/VulkanSDK/1.4.328.1/bin/glslc.com"
+    found: "C:/VulkanSDK/1.4.328.1/Bin/glslc.exe"
     search_context:
       ENV{PATH}:
+        - "C:\\VulkanSDK\\1.4.328.1\\Bin"
         - "C:\\windows\\system32"
         - "C:\\windows"
         - "C:\\windows\\System32\\Wbem"
@@ -1147,17 +1036,17 @@ events:
         - "C:\\Users\\memet\\AppData\\Local\\Microsoft\\WindowsApps"
         - "C:\\Users\\memet\\AppData\\Local\\Programs\\Microsoft VS Code\\bin"
         - "C:\\Users\\memet\\.dotnet\\tools"
-      CMAKE_INSTALL_PREFIX: "C:/Program Files (x86)/Legionfall"
+      CMAKE_INSTALL_PREFIX: "C:/Program Files/Legionfall"
       CMAKE_SYSTEM_PREFIX_PATH:
         - "C:/Program Files"
         - "C:/Program Files (x86)"
         - "C:/Program Files/CMake"
-        - "C:/Program Files (x86)/Legionfall"
+        - "C:/Program Files/Legionfall"
   -
     kind: "find-v1"
     backtrace:
       - "C:/Program Files/CMake/share/cmake-4.2/Modules/FindVulkan.cmake:415 (find_program)"
-      - "CMakeLists.txt:7 (find_package)"
+      - "CMakeLists.txt:11 (find_package)"
     mode: "program"
     variable: "Vulkan_GLSLANG_VALIDATOR_EXECUTABLE"
     description: "Path to a program."
@@ -1172,7 +1061,8 @@ events:
     names:
       - "glslangValidator"
     candidate_directories:
-      - "/bin/"
+      - "C:/VulkanSDK/1.4.328.1/bin/"
+      - "C:/VulkanSDK/1.4.328.1/Bin/"
       - "C:/WINDOWS/System32/"
       - "C:/WINDOWS/"
       - "C:/WINDOWS/System32/wbem/"
@@ -1198,100 +1088,15 @@ events:
       - "C:/Program Files/CMake/bin/"
       - "C:/Program Files/CMake/sbin/"
       - "C:/Program Files/CMake/"
-      - "C:/Program Files (x86)/Legionfall/bin/"
-      - "C:/Program Files (x86)/Legionfall/sbin/"
-      - "C:/Program Files (x86)/Legionfall/"
+      - "C:/Program Files/Legionfall/bin/"
+      - "C:/Program Files/Legionfall/sbin/"
+      - "C:/Program Files/Legionfall/"
     searched_directories:
-      - "/bin/glslangValidator.com"
-      - "/bin/glslangValidator.exe"
-      - "/bin/glslangValidator"
-      - "C:/WINDOWS/System32/glslangValidator.com"
-      - "C:/WINDOWS/System32/glslangValidator.exe"
-      - "C:/WINDOWS/System32/glslangValidator"
-      - "C:/WINDOWS/glslangValidator.com"
-      - "C:/WINDOWS/glslangValidator.exe"
-      - "C:/WINDOWS/glslangValidator"
-      - "C:/WINDOWS/System32/wbem/glslangValidator.com"
-      - "C:/WINDOWS/System32/wbem/glslangValidator.exe"
-      - "C:/WINDOWS/System32/wbem/glslangValidator"
-      - "C:/WINDOWS/System32/WindowsPowerShell/v1.0/glslangValidator.com"
-      - "C:/WINDOWS/System32/WindowsPowerShell/v1.0/glslangValidator.exe"
-      - "C:/WINDOWS/System32/WindowsPowerShell/v1.0/glslangValidator"
-      - "C:/WINDOWS/System32/OpenSSH/glslangValidator.com"
-      - "C:/WINDOWS/System32/OpenSSH/glslangValidator.exe"
-      - "C:/WINDOWS/System32/OpenSSH/glslangValidator"
-      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/glslangValidator.com"
-      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/glslangValidator.exe"
-      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/glslangValidator"
-      - "C:/Program Files/NVIDIA Corporation/NVIDIA NvDLISR/glslangValidator.com"
-      - "C:/Program Files/NVIDIA Corporation/NVIDIA NvDLISR/glslangValidator.exe"
-      - "C:/Program Files/NVIDIA Corporation/NVIDIA NvDLISR/glslangValidator"
-      - "C:/Program Files/Microsoft SQL Server/150/Tools/Binn/glslangValidator.com"
-      - "C:/Program Files/Microsoft SQL Server/150/Tools/Binn/glslangValidator.exe"
-      - "C:/Program Files/Microsoft SQL Server/150/Tools/Binn/glslangValidator"
-      - "C:/Program Files/Microsoft SQL Server/Client SDK/ODBC/170/Tools/Binn/glslangValidator.com"
-      - "C:/Program Files/Microsoft SQL Server/Client SDK/ODBC/170/Tools/Binn/glslangValidator.exe"
-      - "C:/Program Files/Microsoft SQL Server/Client SDK/ODBC/170/Tools/Binn/glslangValidator"
-      - "C:/Program Files/dotnet/glslangValidator.com"
-      - "C:/Program Files/dotnet/glslangValidator.exe"
-      - "C:/Program Files/dotnet/glslangValidator"
-      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/glslangValidator.com"
-      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/glslangValidator.exe"
-      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/glslangValidator"
-      - "C:/Program Files/Git/cmd/glslangValidator.com"
-      - "C:/Program Files/Git/cmd/glslangValidator.exe"
-      - "C:/Program Files/Git/cmd/glslangValidator"
-      - "C:/Program Files/CMake/bin/glslangValidator.com"
-      - "C:/Program Files/CMake/bin/glslangValidator.exe"
-      - "C:/Program Files/CMake/bin/glslangValidator"
-      - "C:/Users/memet/AppData/Local/Microsoft/WindowsApps/glslangValidator.com"
-      - "C:/Users/memet/AppData/Local/Microsoft/WindowsApps/glslangValidator.exe"
-      - "C:/Users/memet/AppData/Local/Microsoft/WindowsApps/glslangValidator"
-      - "C:/Users/memet/AppData/Local/Programs/Microsoft VS Code/bin/glslangValidator.com"
-      - "C:/Users/memet/AppData/Local/Programs/Microsoft VS Code/bin/glslangValidator.exe"
-      - "C:/Users/memet/AppData/Local/Programs/Microsoft VS Code/bin/glslangValidator"
-      - "C:/Users/memet/.dotnet/tools/glslangValidator.com"
-      - "C:/Users/memet/.dotnet/tools/glslangValidator.exe"
-      - "C:/Users/memet/.dotnet/tools/glslangValidator"
-      - "C:/Program Files/bin/glslangValidator.com"
-      - "C:/Program Files/bin/glslangValidator.exe"
-      - "C:/Program Files/bin/glslangValidator"
-      - "C:/Program Files/sbin/glslangValidator.com"
-      - "C:/Program Files/sbin/glslangValidator.exe"
-      - "C:/Program Files/sbin/glslangValidator"
-      - "C:/Program Files/glslangValidator.com"
-      - "C:/Program Files/glslangValidator.exe"
-      - "C:/Program Files/glslangValidator"
-      - "C:/Program Files (x86)/bin/glslangValidator.com"
-      - "C:/Program Files (x86)/bin/glslangValidator.exe"
-      - "C:/Program Files (x86)/bin/glslangValidator"
-      - "C:/Program Files (x86)/sbin/glslangValidator.com"
-      - "C:/Program Files (x86)/sbin/glslangValidator.exe"
-      - "C:/Program Files (x86)/sbin/glslangValidator"
-      - "C:/Program Files (x86)/glslangValidator.com"
-      - "C:/Program Files (x86)/glslangValidator.exe"
-      - "C:/Program Files (x86)/glslangValidator"
-      - "C:/Program Files/CMake/bin/glslangValidator.com"
-      - "C:/Program Files/CMake/bin/glslangValidator.exe"
-      - "C:/Program Files/CMake/bin/glslangValidator"
-      - "C:/Program Files/CMake/sbin/glslangValidator.com"
-      - "C:/Program Files/CMake/sbin/glslangValidator.exe"
-      - "C:/Program Files/CMake/sbin/glslangValidator"
-      - "C:/Program Files/CMake/glslangValidator.com"
-      - "C:/Program Files/CMake/glslangValidator.exe"
-      - "C:/Program Files/CMake/glslangValidator"
-      - "C:/Program Files (x86)/Legionfall/bin/glslangValidator.com"
-      - "C:/Program Files (x86)/Legionfall/bin/glslangValidator.exe"
-      - "C:/Program Files (x86)/Legionfall/bin/glslangValidator"
-      - "C:/Program Files (x86)/Legionfall/sbin/glslangValidator.com"
-      - "C:/Program Files (x86)/Legionfall/sbin/glslangValidator.exe"
-      - "C:/Program Files (x86)/Legionfall/sbin/glslangValidator"
-      - "C:/Program Files (x86)/Legionfall/glslangValidator.com"
-      - "C:/Program Files (x86)/Legionfall/glslangValidator.exe"
-      - "C:/Program Files (x86)/Legionfall/glslangValidator"
-    found: false
+      - "C:/VulkanSDK/1.4.328.1/bin/glslangValidator.com"
+    found: "C:/VulkanSDK/1.4.328.1/Bin/glslangValidator.exe"
     search_context:
       ENV{PATH}:
+        - "C:\\VulkanSDK\\1.4.328.1\\Bin"
         - "C:\\windows\\system32"
         - "C:\\windows"
         - "C:\\windows\\System32\\Wbem"
@@ -1313,10 +1118,90 @@ events:
         - "C:\\Users\\memet\\AppData\\Local\\Microsoft\\WindowsApps"
         - "C:\\Users\\memet\\AppData\\Local\\Programs\\Microsoft VS Code\\bin"
         - "C:\\Users\\memet\\.dotnet\\tools"
-      CMAKE_INSTALL_PREFIX: "C:/Program Files (x86)/Legionfall"
+      CMAKE_INSTALL_PREFIX: "C:/Program Files/Legionfall"
       CMAKE_SYSTEM_PREFIX_PATH:
         - "C:/Program Files"
         - "C:/Program Files (x86)"
         - "C:/Program Files/CMake"
-        - "C:/Program Files (x86)/Legionfall"
+        - "C:/Program Files/Legionfall"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "CMakeLists.txt:36 (find_program)"
+    mode: "program"
+    variable: "GLSLC"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "glslc"
+    candidate_directories:
+      - "C:/VulkanSDK/1.4.328.1/Bin/"
+      - "C:/WINDOWS/System32/"
+      - "C:/WINDOWS/"
+      - "C:/WINDOWS/System32/wbem/"
+      - "C:/WINDOWS/System32/WindowsPowerShell/v1.0/"
+      - "C:/WINDOWS/System32/OpenSSH/"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
+      - "C:/Program Files/NVIDIA Corporation/NVIDIA NvDLISR/"
+      - "C:/Program Files/Microsoft SQL Server/150/Tools/Binn/"
+      - "C:/Program Files/Microsoft SQL Server/Client SDK/ODBC/170/Tools/Binn/"
+      - "C:/Program Files/dotnet/"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/"
+      - "C:/Program Files/Git/cmd/"
+      - "C:/Program Files/CMake/bin/"
+      - "C:/Users/memet/AppData/Local/Microsoft/WindowsApps/"
+      - "C:/Users/memet/AppData/Local/Programs/Microsoft VS Code/bin/"
+      - "C:/Users/memet/.dotnet/tools/"
+      - "C:/Program Files/bin/"
+      - "C:/Program Files/sbin/"
+      - "C:/Program Files/"
+      - "C:/Program Files (x86)/bin/"
+      - "C:/Program Files (x86)/sbin/"
+      - "C:/Program Files (x86)/"
+      - "C:/Program Files/CMake/bin/"
+      - "C:/Program Files/CMake/sbin/"
+      - "C:/Program Files/CMake/"
+      - "C:/Program Files/Legionfall/bin/"
+      - "C:/Program Files/Legionfall/sbin/"
+      - "C:/Program Files/Legionfall/"
+    searched_directories:
+      - "C:/VulkanSDK/1.4.328.1/Bin/glslc.com"
+    found: "C:/VulkanSDK/1.4.328.1/Bin/glslc.exe"
+    search_context:
+      ENV{PATH}:
+        - "C:\\VulkanSDK\\1.4.328.1\\Bin"
+        - "C:\\windows\\system32"
+        - "C:\\windows"
+        - "C:\\windows\\System32\\Wbem"
+        - "C:\\windows\\System32\\WindowsPowerShell\\v1.0\\"
+        - "C:\\windows\\System32\\OpenSSH\\"
+        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
+        - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA NvDLISR"
+        - "C:\\WINDOWS\\system32"
+        - "C:\\WINDOWS"
+        - "C:\\WINDOWS\\System32\\Wbem"
+        - "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\"
+        - "C:\\WINDOWS\\System32\\OpenSSH\\"
+        - "C:\\Program Files\\Microsoft SQL Server\\150\\Tools\\Binn\\"
+        - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
+        - "C:\\Program Files\\dotnet\\"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Program Files\\Git\\cmd"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\Users\\memet\\AppData\\Local\\Microsoft\\WindowsApps"
+        - "C:\\Users\\memet\\AppData\\Local\\Programs\\Microsoft VS Code\\bin"
+        - "C:\\Users\\memet\\.dotnet\\tools"
+      CMAKE_INSTALL_PREFIX: "C:/Program Files/Legionfall"
+      CMAKE_SYSTEM_PREFIX_PATH:
+        - "C:/Program Files"
+        - "C:/Program Files (x86)"
+        - "C:/Program Files/CMake"
+        - "C:/Program Files/Legionfall"
 ...
