@@ -2,6 +2,7 @@
 #include <vector>
 #include <cstdint>
 #include <chrono>
+#include <atomic>
 
 namespace Legionfall {
 
@@ -9,10 +10,10 @@ class JobSystem;
 
 // Per-instance GPU data - must match shader layout
 struct InstanceData {
-    float offsetX, offsetY;       // World position
-    float colorR, colorG, colorB; // RGB color
-    float scale;                  // Uniform scale
-    float padding[2];             // Pad to 32 bytes
+    float offsetX, offsetY;
+    float colorR, colorG, colorB;
+    float scale;
+    float padding[2];
 };
 
 struct Hero {
@@ -33,9 +34,10 @@ struct Hero {
 
 struct Enemy {
     float x, y;
-    float baseX, baseY;
-    float phase;
-    float speed;
+    float baseX, baseY;   // Original spawn (for respawn)
+    float phase;          // Random phase for variety
+    float speed;          // Movement speed
+    float chaseSpeed;     // Speed when chasing hero
     bool alive;
 };
 
@@ -46,6 +48,7 @@ struct InputState {
     bool toggleParallel = false;
     bool toggleHeavyWork = false;
     bool toggleCameraFollow = false;
+    bool toggleChaseMode = false;
     bool increaseEnemies = false;
     bool decreaseEnemies = false;
 };
@@ -59,6 +62,7 @@ struct ProfilingStats {
     bool parallelEnabled = true;
     bool heavyWorkEnabled = false;
     bool cameraFollowEnabled = false;
+    bool chaseModeEnabled = true;
     float heroX = 0.0f, heroY = 0.0f;
 };
 
@@ -76,7 +80,6 @@ private:
     void updateHero(float dt, const InputState& input);
     void updateEnemiesSingleThreaded(float dt);
     void updateEnemiesParallel(float dt, JobSystem* jobs);
-    void updateEnemySlice(size_t start, size_t end, float dt);
     void rebuildInstances();
     void spawnEnemiesInGrid(uint32_t count);
     float doHeavyWork(float x, float y);
@@ -92,9 +95,11 @@ private:
     bool m_parallelEnabled = true;
     bool m_heavyWorkEnabled = false;
     bool m_cameraFollowEnabled = false;
+    bool m_chaseModeEnabled = true;
     bool m_toggleParallelPressed = false;
     bool m_toggleHeavyPressed = false;
     bool m_toggleCameraPressed = false;
+    bool m_toggleChasePressed = false;
     
     // Arena bounds
     static constexpr float ARENA_HALF = 10.0f;

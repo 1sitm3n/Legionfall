@@ -23,6 +23,7 @@ void Game::init(uint32_t enemyCount) {
     m_stats.parallelEnabled = m_parallelEnabled;
     m_stats.heavyWorkEnabled = m_heavyWorkEnabled;
     m_stats.cameraFollowEnabled = m_cameraFollowEnabled;
+    m_stats.chaseModeEnabled = m_chaseModeEnabled;
     m_time = 0.0f;
 }
 
@@ -45,6 +46,12 @@ void Game::update(float dt, const InputState& input, JobSystem* jobs) {
         m_stats.cameraFollowEnabled = m_cameraFollowEnabled;
     }
     m_toggleCameraPressed = input.toggleCameraFollow;
+    
+    if (input.toggleChaseMode && !m_toggleChasePressed) {
+        m_chaseModeEnabled = !m_chaseModeEnabled;
+        m_stats.chaseModeEnabled = m_chaseModeEnabled;
+    }
+    m_toggleChasePressed = input.toggleChaseMode;
 
     m_time += dt;
     
@@ -62,7 +69,6 @@ void Game::update(float dt, const InputState& input, JobSystem* jobs) {
     auto endUpdate = std::chrono::high_resolution_clock::now();
     m_stats.updateTimeMs = std::chrono::duration<double, std::milli>(endUpdate - startUpdate).count();
     
-    // Update stats
     m_stats.heroX = m_hero.x;
     m_stats.heroY = m_hero.y;
     
@@ -70,7 +76,7 @@ void Game::update(float dt, const InputState& input, JobSystem* jobs) {
 }
 
 void Game::updateHero(float dt, const InputState& input) {
-    // Update pulse phase for visual effect
+    // Update pulse phase
     m_hero.pulsePhase += dt * 4.0f;
     if (m_hero.pulsePhase > 6.28318f) {
         m_hero.pulsePhase -= 6.28318f;
@@ -81,7 +87,7 @@ void Game::updateHero(float dt, const InputState& input) {
         m_hero.attackCooldown -= dt;
     }
     
-    // Handle attack input (will be used in Phase 6)
+    // Handle attack input
     m_hero.attackTriggered = false;
     if (input.attack && m_hero.attackCooldown <= 0.0f) {
         m_hero.attackTriggered = true;
@@ -96,28 +102,79 @@ void Game::updateHero(float dt, const InputState& input) {
     if (input.moveRight) vx += 1.0f;
     if (input.moveLeft)  vx -= 1.0f;
 
-    // Normalize diagonal movement
     float len = std::sqrt(vx * vx + vy * vy);
     if (len > 0.0f) {
         vx = (vx / len) * m_hero.speed;
         vy = (vy / len) * m_hero.speed;
     }
     
-    // Store velocity for potential use
     m_hero.velX = vx;
     m_hero.velY = vy;
 
-    // Apply velocity
     m_hero.x += vx * dt;
     m_hero.y += vy * dt;
     
-    // Clamp to arena bounds
     m_hero.x = std::clamp(m_hero.x, -ARENA_HALF + 0.5f, ARENA_HALF - 0.5f);
     m_hero.y = std::clamp(m_hero.y, -ARENA_HALF + 0.5f, ARENA_HALF - 0.5f);
 }
 
 void Game::updateEnemiesSingleThreaded(float dt) {
-    updateEnemySlice(0, m_enemies.size(), dt);
+    float heroX = m_hero.x;
+    float heroY = m_hero.y;
+    float currentTime = m_time;
+    bool chaseMode = m_chaseModeEnabled;
+    bool heavyWork = m_heavyWorkEnabled;
+    
+    for (size_t i = 0; i < m_enemies.size(); ++i) {
+        Enemy& e = m_enemies[i];
+        if (!e.alive) continue;
+        
+        if (chaseMode) {
+            // === CHASE AI ===
+            // Calculate direction to hero
+            float dx = heroX - e.x;
+            float dy = heroY - e.y;
+            float dist = std::sqrt(dx * dx + dy * dy);
+            
+            if (dist > 0.1f) {
+                // Normalize direction
+                dx /= dist;
+                dy /= dist;
+                
+                // Add some wobble for organic movement
+                float wobble = std::sin(currentTime * 3.0f + e.phase * 2.0f) * 0.3f;
+                dx += std::cos(e.phase + currentTime) * wobble * 0.5f;
+                dy += std::sin(e.phase + currentTime) * wobble * 0.5f;
+                
+                // Renormalize
+                float wobbleLen = std::sqrt(dx * dx + dy * dy);
+                if (wobbleLen > 0.0f) {
+                    dx /= wobbleLen;
+                    dy /= wobbleLen;
+                }
+                
+                // Move toward hero
+                e.x += dx * e.chaseSpeed * dt;
+                e.y += dy * e.chaseSpeed * dt;
+            }
+        } else {
+            // === WAVE MOTION (original behavior) ===
+            float waveX = std::sin(currentTime * 1.5f + e.phase) * 0.3f;
+            float waveY = std::cos(currentTime * 2.0f + e.phase * 1.3f) * 0.3f;
+            e.x = e.baseX + waveX * e.speed;
+            e.y = e.baseY + waveY * e.speed;
+        }
+        
+        // Heavy work simulation
+        if (heavyWork) {
+            float result = doHeavyWork(e.x, e.y);
+            e.x += result * 0.0001f;
+        }
+        
+        // Clamp to arena
+        e.x = std::clamp(e.x, -ARENA_HALF, ARENA_HALF);
+        e.y = std::clamp(e.y, -ARENA_HALF, ARENA_HALF);
+    }
 }
 
 void Game::updateEnemiesParallel(float dt, JobSystem* jobs) {
@@ -135,24 +192,55 @@ void Game::updateEnemiesParallel(float dt, JobSystem* jobs) {
     size_t perJob = enemyCount / numJobs;
     size_t remainder = enemyCount % numJobs;
     
+    // Capture all shared state
+    float heroX = m_hero.x;
+    float heroY = m_hero.y;
     float currentTime = m_time;
+    bool chaseMode = m_chaseModeEnabled;
     bool heavyWork = m_heavyWorkEnabled;
+    float deltaTime = dt;
     
     size_t start = 0;
     for (size_t i = 0; i < numJobs; ++i) {
         size_t count = perJob + (i < remainder ? 1 : 0);
         size_t end = start + count;
         
-        jobs->schedule([this, start, end, currentTime, heavyWork]() {
+        jobs->schedule([this, start, end, heroX, heroY, currentTime, chaseMode, heavyWork, deltaTime]() {
             for (size_t j = start; j < end; ++j) {
                 Enemy& e = m_enemies[j];
                 if (!e.alive) continue;
                 
-                float waveX = std::sin(currentTime * 1.5f + e.phase) * 0.3f;
-                float waveY = std::cos(currentTime * 2.0f + e.phase * 1.3f) * 0.3f;
-                
-                e.x = e.baseX + waveX * e.speed;
-                e.y = e.baseY + waveY * e.speed;
+                if (chaseMode) {
+                    // === CHASE AI ===
+                    float dx = heroX - e.x;
+                    float dy = heroY - e.y;
+                    float dist = std::sqrt(dx * dx + dy * dy);
+                    
+                    if (dist > 0.1f) {
+                        dx /= dist;
+                        dy /= dist;
+                        
+                        // Wobble for organic movement
+                        float wobble = std::sin(currentTime * 3.0f + e.phase * 2.0f) * 0.3f;
+                        dx += std::cos(e.phase + currentTime) * wobble * 0.5f;
+                        dy += std::sin(e.phase + currentTime) * wobble * 0.5f;
+                        
+                        float wobbleLen = std::sqrt(dx * dx + dy * dy);
+                        if (wobbleLen > 0.0f) {
+                            dx /= wobbleLen;
+                            dy /= wobbleLen;
+                        }
+                        
+                        e.x += dx * e.chaseSpeed * deltaTime;
+                        e.y += dy * e.chaseSpeed * deltaTime;
+                    }
+                } else {
+                    // Wave motion
+                    float waveX = std::sin(currentTime * 1.5f + e.phase) * 0.3f;
+                    float waveY = std::cos(currentTime * 2.0f + e.phase * 1.3f) * 0.3f;
+                    e.x = e.baseX + waveX * e.speed;
+                    e.y = e.baseY + waveY * e.speed;
+                }
                 
                 if (heavyWork) {
                     float result = 0.0f;
@@ -174,29 +262,6 @@ void Game::updateEnemiesParallel(float dt, JobSystem* jobs) {
     jobs->wait();
 }
 
-void Game::updateEnemySlice(size_t start, size_t end, float dt) {
-    (void)dt;
-    
-    for (size_t i = start; i < end; ++i) {
-        Enemy& e = m_enemies[i];
-        if (!e.alive) continue;
-        
-        float waveX = std::sin(m_time * 1.5f + e.phase) * 0.3f;
-        float waveY = std::cos(m_time * 2.0f + e.phase * 1.3f) * 0.3f;
-        
-        e.x = e.baseX + waveX * e.speed;
-        e.y = e.baseY + waveY * e.speed;
-        
-        if (m_heavyWorkEnabled) {
-            float result = doHeavyWork(e.x, e.y);
-            e.x += result * 0.0001f;
-        }
-        
-        e.x = std::clamp(e.x, -ARENA_HALF, ARENA_HALF);
-        e.y = std::clamp(e.y, -ARENA_HALF, ARENA_HALF);
-    }
-}
-
 float Game::doHeavyWork(float x, float y) {
     float result = 0.0f;
     for (int i = 0; i < 50; ++i) {
@@ -215,23 +280,26 @@ void Game::rebuildInstances() {
     }
     m_instances.reserve(1 + aliveCount);
 
-    // === HERO === (Instance 0)
-    // Pulsing cyan/white color, larger size
-    float pulse = std::sin(m_hero.pulsePhase) * 0.5f + 0.5f; // 0 to 1
-    float heroScale = 0.55f + pulse * 0.1f; // Pulsing size
+    // === HERO ===
+    float pulse = std::sin(m_hero.pulsePhase) * 0.5f + 0.5f;
+    float heroScale = 0.55f + pulse * 0.1f;
+    
+    // Flash brighter when attacking
+    float attackFlash = (m_hero.attackCooldown > 0.3f) ? 1.0f : 0.0f;
     
     InstanceData hero{};
     hero.offsetX = m_hero.x;
     hero.offsetY = m_hero.y;
-    
-    // Bright cyan that pulses to white
-    hero.colorR = 0.3f + pulse * 0.7f;
+    hero.colorR = 0.3f + pulse * 0.4f + attackFlash * 0.3f;
     hero.colorG = 0.8f + pulse * 0.2f;
     hero.colorB = 1.0f;
-    hero.scale = heroScale;
+    hero.scale = heroScale + attackFlash * 0.2f;
     m_instances.push_back(hero);
 
     // === ENEMIES ===
+    float heroX = m_hero.x;
+    float heroY = m_hero.y;
+    
     for (const auto& e : m_enemies) {
         if (!e.alive) continue;
         
@@ -239,12 +307,16 @@ void Game::rebuildInstances() {
         inst.offsetX = e.x;
         inst.offsetY = e.y;
         
-        // Color gradient based on position (red to orange)
-        float t = (e.baseX + ARENA_HALF) / (2.0f * ARENA_HALF);
-        inst.colorR = 1.0f;
-        inst.colorG = 0.2f + t * 0.3f;
+        // Color based on distance to hero (closer = more red/angry)
+        float dx = e.x - heroX;
+        float dy = e.y - heroY;
+        float dist = std::sqrt(dx * dx + dy * dy);
+        float proximity = 1.0f - std::clamp(dist / 8.0f, 0.0f, 1.0f);
+        
+        inst.colorR = 0.8f + proximity * 0.2f;
+        inst.colorG = 0.3f - proximity * 0.2f;
         inst.colorB = 0.1f;
-        inst.scale = 0.18f;
+        inst.scale = 0.18f + proximity * 0.05f;  // Slightly larger when close
         m_instances.push_back(inst);
     }
 
@@ -257,6 +329,7 @@ void Game::spawnEnemiesInGrid(uint32_t count) {
     std::mt19937 rng(12345);
     std::uniform_real_distribution<float> phaseDist(0.0f, 6.28318f);
     std::uniform_real_distribution<float> speedDist(0.5f, 1.5f);
+    std::uniform_real_distribution<float> chaseSpeedDist(1.5f, 4.0f);  // Chase speed varies
     
     uint32_t gridSize = (uint32_t)std::ceil(std::sqrt((double)count));
     float spacing = (ARENA_HALF * 2.0f - 2.0f) / (float)(gridSize);
@@ -274,6 +347,7 @@ void Game::spawnEnemiesInGrid(uint32_t count) {
         e.y = e.baseY;
         e.phase = phaseDist(rng);
         e.speed = speedDist(rng);
+        e.chaseSpeed = chaseSpeedDist(rng);
         e.alive = true;
         
         // Clear area around hero spawn
