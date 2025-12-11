@@ -27,7 +27,7 @@ struct Hero {
     float attackCooldownMax = 0.4f;
     bool attackTriggered = false;
     
-    // Shockwave visual effect
+    // Shockwave
     float shockwaveRadius = 0.0f;
     float shockwaveAlpha = 0.0f;
     
@@ -35,6 +35,7 @@ struct Hero {
     int health = 100;
     int maxHealth = 100;
     int killCount = 0;
+    int waveNumber = 1;
     
     // Visual
     float pulsePhase = 0.0f;
@@ -48,10 +49,8 @@ struct Enemy {
     float speed;
     float chaseSpeed;
     bool alive;
-    
-    // Death animation
     float deathTimer;
-    float deathX, deathY;  // Position at death for respawn reference
+    float deathX, deathY;
 };
 
 struct InputState {
@@ -64,6 +63,7 @@ struct InputState {
     bool toggleChaseMode = false;
     bool increaseEnemies = false;
     bool decreaseEnemies = false;
+    bool restart = false;
 };
 
 struct ProfilingStats {
@@ -74,17 +74,21 @@ struct ProfilingStats {
     uint32_t aliveCount = 0;
     uint32_t killCount = 0;
     int heroHealth = 100;
+    int waveNumber = 1;
     bool parallelEnabled = true;
     bool heavyWorkEnabled = false;
     bool cameraFollowEnabled = false;
     bool chaseModeEnabled = true;
     float heroX = 0.0f, heroY = 0.0f;
+    size_t threadCount = 0;
 };
 
 class Game {
 public:
     void init(uint32_t enemyCount);
     void update(float dt, const InputState& input, JobSystem* jobs);
+    void restart();
+    void adjustEnemyCount(int delta);
     
     const std::vector<InstanceData>& getInstanceData() const { return m_instances; }
     const ProfilingStats& getStats() const { return m_stats; }
@@ -92,6 +96,7 @@ public:
     bool isCameraFollowEnabled() const { return m_cameraFollowEnabled; }
     float getShockwaveRadius() const { return m_hero.shockwaveRadius; }
     float getShockwaveAlpha() const { return m_hero.shockwaveAlpha; }
+    bool isGameOver() const { return m_hero.health <= 0; }
 
 private:
     void updateHero(float dt, const InputState& input);
@@ -102,6 +107,8 @@ private:
     void respawnEnemy(Enemy& e);
     void rebuildInstances();
     void spawnEnemiesInGrid(uint32_t count);
+    void addArenaBoundaryInstances();
+    void addShockwaveInstances();
     float doHeavyWork(float x, float y);
 
     Hero m_hero;
@@ -110,7 +117,8 @@ private:
     ProfilingStats m_stats;
     
     float m_time = 0.0f;
-    uint32_t m_initialEnemyCount = 0;
+    uint32_t m_initialEnemyCount = 5000;
+    uint32_t m_targetEnemyCount = 5000;
     
     // Toggle states
     bool m_parallelEnabled = true;
@@ -121,12 +129,14 @@ private:
     bool m_toggleHeavyPressed = false;
     bool m_toggleCameraPressed = false;
     bool m_toggleChasePressed = false;
+    bool m_increasePressed = false;
+    bool m_decreasePressed = false;
     
-    // Arena bounds
+    // Arena
     static constexpr float ARENA_HALF = 10.0f;
-    
-    // Respawn delay
     static constexpr float RESPAWN_DELAY = 2.0f;
+    static constexpr uint32_t MIN_ENEMIES = 100;
+    static constexpr uint32_t MAX_ENEMIES = 50000;
 };
 
 }

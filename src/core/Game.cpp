@@ -4,13 +4,16 @@
 #include <algorithm>
 #include <chrono>
 #include <random>
+#include <iostream>
 
 namespace Legionfall {
 
-// Random number generator for respawning
 static std::mt19937 s_rng(12345);
 
 void Game::init(uint32_t enemyCount) {
+    m_initialEnemyCount = enemyCount;
+    m_targetEnemyCount = enemyCount;
+    
     m_hero = Hero{};
     m_hero.x = 0.0f;
     m_hero.y = 0.0f;
@@ -18,22 +21,33 @@ void Game::init(uint32_t enemyCount) {
     m_hero.health = 100;
     m_hero.maxHealth = 100;
     m_hero.killCount = 0;
+    m_hero.waveNumber = 1;
     m_hero.pulsePhase = 0.0f;
 
     m_enemies.clear();
-    m_initialEnemyCount = enemyCount;
     spawnEnemiesInGrid(enemyCount);
     rebuildInstances();
 
     m_stats.enemyCount = enemyCount;
-    m_stats.aliveCount = enemyCount;
-    m_stats.killCount = 0;
-    m_stats.heroHealth = m_hero.health;
     m_stats.parallelEnabled = m_parallelEnabled;
     m_stats.heavyWorkEnabled = m_heavyWorkEnabled;
     m_stats.cameraFollowEnabled = m_cameraFollowEnabled;
     m_stats.chaseModeEnabled = m_chaseModeEnabled;
     m_time = 0.0f;
+}
+
+void Game::restart() {
+    init(m_targetEnemyCount);
+}
+
+void Game::adjustEnemyCount(int delta) {
+    int newCount = (int)m_targetEnemyCount + delta;
+    newCount = std::clamp(newCount, (int)MIN_ENEMIES, (int)MAX_ENEMIES);
+    m_targetEnemyCount = (uint32_t)newCount;
+    
+    // Reinitialize with new count
+    init(m_targetEnemyCount);
+    std::cout << "[Game] Enemy count adjusted to: " << m_targetEnemyCount << std::endl;
 }
 
 void Game::update(float dt, const InputState& input, JobSystem* jobs) {
@@ -61,6 +75,23 @@ void Game::update(float dt, const InputState& input, JobSystem* jobs) {
         m_stats.chaseModeEnabled = m_chaseModeEnabled;
     }
     m_toggleChasePressed = input.toggleChaseMode;
+    
+    // Handle enemy count adjustment
+    if (input.increaseEnemies && !m_increasePressed) {
+        adjustEnemyCount(1000);
+    }
+    m_increasePressed = input.increaseEnemies;
+    
+    if (input.decreaseEnemies && !m_decreasePressed) {
+        adjustEnemyCount(-1000);
+    }
+    m_decreasePressed = input.decreaseEnemies;
+
+    // Don't update if game over
+    if (m_hero.health <= 0) {
+        rebuildInstances();
+        return;
+    }
 
     m_time += dt;
     
@@ -71,14 +102,15 @@ void Game::update(float dt, const InputState& input, JobSystem* jobs) {
     
     if (m_parallelEnabled && jobs != nullptr && jobs->threadCount() > 0) {
         updateEnemiesParallel(dt, jobs);
+        m_stats.threadCount = jobs->threadCount();
     } else {
         updateEnemiesSingleThreaded(dt);
+        m_stats.threadCount = 1;
     }
     
     auto endUpdate = std::chrono::high_resolution_clock::now();
     m_stats.updateTimeMs = std::chrono::duration<double, std::milli>(endUpdate - startUpdate).count();
     
-    // Check hero-enemy collisions
     checkCollisions();
     
     // Update stats
@@ -86,39 +118,33 @@ void Game::update(float dt, const InputState& input, JobSystem* jobs) {
     m_stats.heroY = m_hero.y;
     m_stats.killCount = m_hero.killCount;
     m_stats.heroHealth = m_hero.health;
+    m_stats.waveNumber = m_hero.waveNumber;
     
     rebuildInstances();
 }
 
 void Game::updateHero(float dt, const InputState& input) {
-    // Update pulse phase
     m_hero.pulsePhase += dt * 4.0f;
-    if (m_hero.pulsePhase > 6.28318f) {
-        m_hero.pulsePhase -= 6.28318f;
-    }
+    if (m_hero.pulsePhase > 6.28318f) m_hero.pulsePhase -= 6.28318f;
     
-    // Update damage flash
     if (m_hero.damageFlash > 0.0f) {
         m_hero.damageFlash -= dt * 4.0f;
         if (m_hero.damageFlash < 0.0f) m_hero.damageFlash = 0.0f;
     }
     
-    // Update shockwave effect
     if (m_hero.shockwaveAlpha > 0.0f) {
-        m_hero.shockwaveRadius += dt * 15.0f;
-        m_hero.shockwaveAlpha -= dt * 3.0f;
+        m_hero.shockwaveRadius += dt * 20.0f;
+        m_hero.shockwaveAlpha -= dt * 2.5f;
         if (m_hero.shockwaveAlpha < 0.0f) {
             m_hero.shockwaveAlpha = 0.0f;
             m_hero.shockwaveRadius = 0.0f;
         }
     }
     
-    // Update attack cooldown
     if (m_hero.attackCooldown > 0.0f) {
         m_hero.attackCooldown -= dt;
     }
     
-    // Handle attack input
     m_hero.attackTriggered = false;
     if (input.attack && m_hero.attackCooldown <= 0.0f) {
         m_hero.attackTriggered = true;
@@ -126,9 +152,7 @@ void Game::updateHero(float dt, const InputState& input) {
         performAttack();
     }
     
-    // Calculate velocity from input
     float vx = 0.0f, vy = 0.0f;
-    
     if (input.moveUp)    vy += 1.0f;
     if (input.moveDown)  vy -= 1.0f;
     if (input.moveRight) vx += 1.0f;
@@ -142,21 +166,18 @@ void Game::updateHero(float dt, const InputState& input) {
     
     m_hero.velX = vx;
     m_hero.velY = vy;
-
     m_hero.x += vx * dt;
     m_hero.y += vy * dt;
-    
     m_hero.x = std::clamp(m_hero.x, -ARENA_HALF + 0.5f, ARENA_HALF - 0.5f);
     m_hero.y = std::clamp(m_hero.y, -ARENA_HALF + 0.5f, ARENA_HALF - 0.5f);
 }
 
 void Game::performAttack() {
-    // Start shockwave visual
     m_hero.shockwaveRadius = 0.5f;
     m_hero.shockwaveAlpha = 1.0f;
     
-    // Kill enemies within attack radius
     float attackRadiusSq = m_hero.attackRadius * m_hero.attackRadius;
+    int killsThisAttack = 0;
     
     for (auto& e : m_enemies) {
         if (!e.alive) continue;
@@ -171,12 +192,23 @@ void Game::performAttack() {
             e.deathX = e.x;
             e.deathY = e.y;
             m_hero.killCount++;
+            killsThisAttack++;
+        }
+    }
+    
+    // Wave progression: every 100 kills, increase difficulty
+    int newWave = (m_hero.killCount / 100) + 1;
+    if (newWave > m_hero.waveNumber) {
+        m_hero.waveNumber = newWave;
+        // Enemies get faster each wave
+        for (auto& e : m_enemies) {
+            e.chaseSpeed *= 1.05f;
         }
     }
 }
 
 void Game::checkCollisions() {
-    if (!m_chaseModeEnabled) return;  // No damage in wave mode
+    if (!m_chaseModeEnabled) return;
     
     float heroRadiusSq = m_hero.radius * m_hero.radius;
     
@@ -187,12 +219,10 @@ void Game::checkCollisions() {
         float dy = e.y - m_hero.y;
         float distSq = dx * dx + dy * dy;
         
-        // Collision!
         if (distSq < heroRadiusSq) {
-            m_hero.health -= 1;  // Lose 1 health per frame of contact
+            m_hero.health -= 1;
             m_hero.damageFlash = 1.0f;
             
-            // Push enemy back slightly
             float dist = std::sqrt(distSq);
             if (dist > 0.01f) {
                 e.x += (dx / dist) * 0.5f;
@@ -201,7 +231,6 @@ void Game::checkCollisions() {
         }
     }
     
-    // Clamp health
     if (m_hero.health < 0) m_hero.health = 0;
 }
 
@@ -209,16 +238,20 @@ void Game::respawnEnemy(Enemy& e) {
     std::uniform_real_distribution<float> edgeDist(-ARENA_HALF + 0.5f, ARENA_HALF - 0.5f);
     std::uniform_int_distribution<int> sideDist(0, 3);
     std::uniform_real_distribution<float> phaseDist(0.0f, 6.28318f);
-    std::uniform_real_distribution<float> chaseSpeedDist(1.5f, 4.0f);
+    
+    // Chase speed increases with wave
+    float baseSpeed = 1.5f + m_hero.waveNumber * 0.2f;
+    float maxSpeed = 4.0f + m_hero.waveNumber * 0.3f;
+    std::uniform_real_distribution<float> chaseSpeedDist(baseSpeed, maxSpeed);
     
     int side = sideDist(s_rng);
     float pos = edgeDist(s_rng);
     
     switch (side) {
-        case 0: e.x = -ARENA_HALF + 0.2f; e.y = pos; break;  // Left
-        case 1: e.x = ARENA_HALF - 0.2f;  e.y = pos; break;  // Right
-        case 2: e.x = pos; e.y = -ARENA_HALF + 0.2f; break;  // Bottom
-        case 3: e.x = pos; e.y = ARENA_HALF - 0.2f;  break;  // Top
+        case 0: e.x = -ARENA_HALF + 0.2f; e.y = pos; break;
+        case 1: e.x = ARENA_HALF - 0.2f;  e.y = pos; break;
+        case 2: e.x = pos; e.y = -ARENA_HALF + 0.2f; break;
+        case 3: e.x = pos; e.y = ARENA_HALF - 0.2f;  break;
     }
     
     e.baseX = e.x;
@@ -239,12 +272,9 @@ void Game::updateEnemiesSingleThreaded(float dt) {
     for (size_t i = 0; i < m_enemies.size(); ++i) {
         Enemy& e = m_enemies[i];
         
-        // Handle dead enemies (respawn timer)
         if (!e.alive) {
             e.deathTimer -= dt;
-            if (e.deathTimer <= 0.0f) {
-                respawnEnemy(e);
-            }
+            if (e.deathTimer <= 0.0f) respawnEnemy(e);
             continue;
         }
         
@@ -262,10 +292,7 @@ void Game::updateEnemiesSingleThreaded(float dt) {
                 dy += std::sin(e.phase + currentTime) * wobble * 0.5f;
                 
                 float wobbleLen = std::sqrt(dx * dx + dy * dy);
-                if (wobbleLen > 0.0f) {
-                    dx /= wobbleLen;
-                    dy /= wobbleLen;
-                }
+                if (wobbleLen > 0.0f) { dx /= wobbleLen; dy /= wobbleLen; }
                 
                 e.x += dx * e.chaseSpeed * dt;
                 e.y += dy * e.chaseSpeed * dt;
@@ -299,7 +326,6 @@ void Game::updateEnemiesParallel(float dt, JobSystem* jobs) {
         return;
     }
     
-    // First pass: update alive enemies (parallel-safe)
     size_t perJob = enemyCount / numJobs;
     size_t remainder = enemyCount % numJobs;
     
@@ -318,8 +344,6 @@ void Game::updateEnemiesParallel(float dt, JobSystem* jobs) {
         jobs->schedule([this, start, end, heroX, heroY, currentTime, chaseMode, heavyWork, deltaTime]() {
             for (size_t j = start; j < end; ++j) {
                 Enemy& e = m_enemies[j];
-                
-                // Skip dead enemies in parallel (handle respawn in main thread)
                 if (!e.alive) continue;
                 
                 if (chaseMode) {
@@ -336,10 +360,7 @@ void Game::updateEnemiesParallel(float dt, JobSystem* jobs) {
                         dy += std::sin(e.phase + currentTime) * wobble * 0.5f;
                         
                         float wobbleLen = std::sqrt(dx * dx + dy * dy);
-                        if (wobbleLen > 0.0f) {
-                            dx /= wobbleLen;
-                            dy /= wobbleLen;
-                        }
+                        if (wobbleLen > 0.0f) { dx /= wobbleLen; dy /= wobbleLen; }
                         
                         e.x += dx * e.chaseSpeed * deltaTime;
                         e.y += dy * e.chaseSpeed * deltaTime;
@@ -370,13 +391,10 @@ void Game::updateEnemiesParallel(float dt, JobSystem* jobs) {
     
     jobs->wait();
     
-    // Second pass: handle dead enemy respawns (single-threaded, not performance critical)
     for (auto& e : m_enemies) {
         if (!e.alive) {
             e.deathTimer -= dt;
-            if (e.deathTimer <= 0.0f) {
-                respawnEnemy(e);
-            }
+            if (e.deathTimer <= 0.0f) respawnEnemy(e);
         }
     }
 }
@@ -390,6 +408,71 @@ float Game::doHeavyWork(float x, float y) {
     return result;
 }
 
+void Game::addArenaBoundaryInstances() {
+    // Create visible boundary markers around the arena
+    float boundaryScale = 0.15f;
+    float spacing = 1.0f;
+    
+    // Pulsing boundary color
+    float pulse = std::sin(m_time * 2.0f) * 0.3f + 0.5f;
+    
+    for (float pos = -ARENA_HALF; pos <= ARENA_HALF; pos += spacing) {
+        // Top edge
+        InstanceData top{};
+        top.offsetX = pos;
+        top.offsetY = ARENA_HALF;
+        top.colorR = 0.2f; top.colorG = 0.3f + pulse * 0.2f; top.colorB = 0.5f;
+        top.scale = boundaryScale;
+        m_instances.push_back(top);
+        
+        // Bottom edge
+        InstanceData bottom{};
+        bottom.offsetX = pos;
+        bottom.offsetY = -ARENA_HALF;
+        bottom.colorR = 0.2f; bottom.colorG = 0.3f + pulse * 0.2f; bottom.colorB = 0.5f;
+        bottom.scale = boundaryScale;
+        m_instances.push_back(bottom);
+        
+        // Left edge
+        InstanceData left{};
+        left.offsetX = -ARENA_HALF;
+        left.offsetY = pos;
+        left.colorR = 0.2f; left.colorG = 0.3f + pulse * 0.2f; left.colorB = 0.5f;
+        left.scale = boundaryScale;
+        m_instances.push_back(left);
+        
+        // Right edge
+        InstanceData right{};
+        right.offsetX = ARENA_HALF;
+        right.offsetY = pos;
+        right.colorR = 0.2f; right.colorG = 0.3f + pulse * 0.2f; right.colorB = 0.5f;
+        right.scale = boundaryScale;
+        m_instances.push_back(right);
+    }
+}
+
+void Game::addShockwaveInstances() {
+    if (m_hero.shockwaveAlpha <= 0.0f) return;
+    
+    // Create ring of triangles for shockwave effect
+    int segments = 24;
+    float radius = m_hero.shockwaveRadius;
+    float alpha = m_hero.shockwaveAlpha;
+    
+    for (int i = 0; i < segments; ++i) {
+        float angle = (float)i / (float)segments * 6.28318f;
+        
+        InstanceData wave{};
+        wave.offsetX = m_hero.x + std::cos(angle) * radius;
+        wave.offsetY = m_hero.y + std::sin(angle) * radius;
+        wave.colorR = 0.5f + alpha * 0.5f;
+        wave.colorG = 0.8f + alpha * 0.2f;
+        wave.colorB = 1.0f;
+        wave.scale = 0.2f * alpha;
+        m_instances.push_back(wave);
+    }
+}
+
 void Game::rebuildInstances() {
     m_instances.clear();
     
@@ -397,31 +480,46 @@ void Game::rebuildInstances() {
     for (const auto& e : m_enemies) {
         if (e.alive) aliveCount++;
     }
-    m_instances.reserve(1 + aliveCount);
+    
+    // Reserve space: boundary + shockwave + hero + enemies
+    m_instances.reserve(200 + 24 + 1 + aliveCount);
+    
+    // Add arena boundary first (drawn behind everything)
+    addArenaBoundaryInstances();
+    
+    // Add shockwave effect
+    addShockwaveInstances();
 
     // === HERO ===
     float pulse = std::sin(m_hero.pulsePhase) * 0.5f + 0.5f;
     float heroScale = 0.55f + pulse * 0.1f;
-    
-    // Flash when attacking or damaged
     float attackFlash = (m_hero.shockwaveAlpha > 0.5f) ? 1.0f : 0.0f;
     float damageFlash = m_hero.damageFlash;
+    
+    // Game over effect
+    bool gameOver = m_hero.health <= 0;
     
     InstanceData hero{};
     hero.offsetX = m_hero.x;
     hero.offsetY = m_hero.y;
     
-    if (damageFlash > 0.0f) {
-        // Flash red when damaged
+    if (gameOver) {
+        // Gray when dead
+        hero.colorR = 0.3f;
+        hero.colorG = 0.3f;
+        hero.colorB = 0.3f;
+        hero.scale = heroScale * 0.8f;
+    } else if (damageFlash > 0.0f) {
         hero.colorR = 1.0f;
         hero.colorG = 0.2f;
         hero.colorB = 0.2f;
+        hero.scale = heroScale;
     } else {
         hero.colorR = 0.3f + pulse * 0.4f + attackFlash * 0.5f;
         hero.colorG = 0.8f + pulse * 0.2f + attackFlash * 0.2f;
         hero.colorB = 1.0f;
+        hero.scale = heroScale + attackFlash * 0.3f;
     }
-    hero.scale = heroScale + attackFlash * 0.3f;
     m_instances.push_back(hero);
 
     // === ENEMIES ===
@@ -440,17 +538,20 @@ void Game::rebuildInstances() {
         float dist = std::sqrt(dx * dx + dy * dy);
         float proximity = 1.0f - std::clamp(dist / 8.0f, 0.0f, 1.0f);
         
+        // More vibrant colors, danger indication
         inst.colorR = 0.8f + proximity * 0.2f;
-        inst.colorG = 0.3f - proximity * 0.2f;
-        inst.colorB = 0.1f;
-        inst.scale = 0.18f + proximity * 0.05f;
+        inst.colorG = 0.25f - proximity * 0.15f;
+        inst.colorB = 0.05f + proximity * 0.1f;
+        inst.scale = 0.18f + proximity * 0.06f;
         m_instances.push_back(inst);
     }
 
     m_stats.aliveCount = aliveCount;
+    m_stats.enemyCount = (uint32_t)m_enemies.size();
 }
 
 void Game::spawnEnemiesInGrid(uint32_t count) {
+    m_enemies.clear();
     m_enemies.reserve(count);
     
     std::uniform_real_distribution<float> phaseDist(0.0f, 6.28318f);
@@ -480,7 +581,7 @@ void Game::spawnEnemiesInGrid(uint32_t count) {
         float distSq = e.baseX * e.baseX + e.baseY * e.baseY;
         if (distSq < 6.0f) {
             e.alive = false;
-            e.deathTimer = 0.5f;  // Respawn quickly
+            e.deathTimer = 0.5f;
         }
         
         m_enemies.push_back(e);
