@@ -18,7 +18,6 @@ namespace {
     uint32_t g_width = 1280, g_height = 720;
     const wchar_t* CLASS_NAME = L"LegionfallWindow";
 
-    // Phase 3: More enemies for stress test
     constexpr uint32_t INITIAL_ENEMIES = 5000;
 }
 
@@ -41,6 +40,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 case VK_SPACE: g_input.attack = true; break;
                 case 'P': g_input.toggleParallel = true; break;
                 case 'H': g_input.toggleHeavyWork = true; break;
+                case 'C': g_input.toggleCameraFollow = true; break;
                 case VK_ESCAPE: g_running = false; break;
             }
             return 0;
@@ -53,6 +53,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 case VK_SPACE: g_input.attack = false; break;
                 case 'P': g_input.toggleParallel = false; break;
                 case 'H': g_input.toggleHeavyWork = false; break;
+                case 'C': g_input.toggleCameraFollow = false; break;
             }
             return 0;
         default: return DefWindowProcW(hwnd, msg, wParam, lParam);
@@ -60,13 +61,16 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 }
 
 void UpdateWindowTitle(HWND hwnd, const Legionfall::ProfilingStats& stats, int fps) {
-    wchar_t title[256];
-    swprintf_s(title, L"Legionfall | FPS: %d | Enemies: %u | Update: %.2f ms | %s | %s",
+    wchar_t title[512];
+    swprintf_s(title, 
+        L"Legionfall | FPS: %d | Enemies: %u | Update: %.2f ms | %s | %s | Cam: %s | Hero: (%.1f, %.1f)",
         fps,
         stats.aliveCount,
         stats.updateTimeMs,
         stats.parallelEnabled ? L"PARALLEL" : L"SINGLE",
-        stats.heavyWorkEnabled ? L"HEAVY" : L"LIGHT");
+        stats.heavyWorkEnabled ? L"HEAVY" : L"LIGHT",
+        stats.cameraFollowEnabled ? L"FOLLOW" : L"FIXED",
+        stats.heroX, stats.heroY);
     SetWindowTextW(hwnd, title);
 }
 
@@ -75,7 +79,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
     FILE* fp; freopen_s(&fp, "CONOUT$", "w", stdout); freopen_s(&fp, "CONOUT$", "w", stderr);
     
     std::cout << "=============================================" << std::endl;
-    std::cout << "  Legionfall - Phase 3: Parallel Swarm       " << std::endl;
+    std::cout << "  Legionfall - Phase 4: Hero Control         " << std::endl;
     std::cout << "=============================================" << std::endl;
 
     WNDCLASSEXW wc{}; wc.cbSize = sizeof(wc); wc.style = CS_HREDRAW | CS_VREDRAW;
@@ -87,7 +91,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
 
     RECT r = {0, 0, (LONG)g_width, (LONG)g_height}; AdjustWindowRect(&r, WS_OVERLAPPEDWINDOW, FALSE);
     int sw = GetSystemMetrics(SM_CXSCREEN), sh = GetSystemMetrics(SM_CYSCREEN);
-    HWND hwnd = CreateWindowExW(0, CLASS_NAME, L"Legionfall - Phase 3", WS_OVERLAPPEDWINDOW,
+    HWND hwnd = CreateWindowExW(0, CLASS_NAME, L"Legionfall - Phase 4", WS_OVERLAPPEDWINDOW,
         (sw - (r.right - r.left)) / 2, (sh - (r.bottom - r.top)) / 2,
         r.right - r.left, r.bottom - r.top, nullptr, nullptr, hInstance, nullptr);
 
@@ -111,8 +115,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
     std::cout << "=============================================" << std::endl;
     std::cout << " Controls:                                   " << std::endl;
     std::cout << "   WASD  = Move hero                         " << std::endl;
+    std::cout << "   SPACE = Attack (ready for Phase 6)        " << std::endl;
     std::cout << "   P     = Toggle Parallel/Single-threaded   " << std::endl;
     std::cout << "   H     = Toggle Heavy work mode            " << std::endl;
+    std::cout << "   C     = Toggle Camera follow              " << std::endl;
     std::cout << "   ESC   = Exit                              " << std::endl;
     std::cout << "=============================================" << std::endl;
     std::cout << std::endl;
@@ -122,6 +128,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
     auto lastPrintTime = Clock::now();
     int frameCount = 0;
     double frameTimeAccum = 0.0;
+    
+    // Camera smoothing
+    float cameraX = 0.0f, cameraY = 0.0f;
     
     MSG msg{};
     while (g_running) {
@@ -140,12 +149,29 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
         // Update game
         g_game->update(dt, g_input, g_jobSystem);
         
+        // Camera follow with smoothing
+        float heroX, heroY;
+        g_game->getHeroPosition(heroX, heroY);
+        
+        if (g_game->isCameraFollowEnabled()) {
+            // Smooth camera follow
+            float followSpeed = 5.0f;
+            cameraX += (heroX - cameraX) * followSpeed * dt;
+            cameraY += (heroY - cameraY) * followSpeed * dt;
+        } else {
+            // Reset to center when not following
+            cameraX += (0.0f - cameraX) * 3.0f * dt;
+            cameraY += (0.0f - cameraY) * 3.0f * dt;
+        }
+        
+        g_renderer->setCameraPosition(cameraX, cameraY);
+        
         // Render
         g_renderer->updateInstanceBuffer(g_game->getInstanceData());
         g_renderer->drawFrame();
 
         frameCount++;
-        frameTimeAccum += dt * 1000.0; // ms
+        frameTimeAccum += dt * 1000.0;
 
         // Print stats every second
         double timeSincePrint = std::chrono::duration<double>(now - lastPrintTime).count();
@@ -154,17 +180,16 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
             int fps = frameCount;
             double avgFrameTime = frameTimeAccum / frameCount;
             
-            // Console output
             std::cout << std::fixed << std::setprecision(2);
             std::cout << "[" << (stats.parallelEnabled ? "Parallel" : "Single  ") << "] "
                       << "FPS: " << std::setw(4) << fps 
                       << " | Update: " << std::setw(6) << stats.updateTimeMs << " ms"
                       << " | Frame: " << std::setw(6) << avgFrameTime << " ms"
-                      << " | Enemies: " << stats.aliveCount
+                      << " | Hero: (" << std::setw(5) << stats.heroX << ", " << std::setw(5) << stats.heroY << ")"
                       << (stats.heavyWorkEnabled ? " | HEAVY" : "")
+                      << (stats.cameraFollowEnabled ? " | CAM:FOLLOW" : "")
                       << std::endl;
             
-            // Window title
             UpdateWindowTitle(hwnd, stats, fps);
             
             frameCount = 0;

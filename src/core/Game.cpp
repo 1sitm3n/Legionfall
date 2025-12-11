@@ -12,6 +12,7 @@ void Game::init(uint32_t enemyCount) {
     m_hero.x = 0.0f;
     m_hero.y = 0.0f;
     m_hero.speed = 8.0f;
+    m_hero.pulsePhase = 0.0f;
 
     m_enemies.clear();
     spawnEnemiesInGrid(enemyCount);
@@ -21,6 +22,7 @@ void Game::init(uint32_t enemyCount) {
     m_stats.aliveCount = enemyCount;
     m_stats.parallelEnabled = m_parallelEnabled;
     m_stats.heavyWorkEnabled = m_heavyWorkEnabled;
+    m_stats.cameraFollowEnabled = m_cameraFollowEnabled;
     m_time = 0.0f;
 }
 
@@ -37,6 +39,12 @@ void Game::update(float dt, const InputState& input, JobSystem* jobs) {
         m_stats.heavyWorkEnabled = m_heavyWorkEnabled;
     }
     m_toggleHeavyPressed = input.toggleHeavyWork;
+    
+    if (input.toggleCameraFollow && !m_toggleCameraPressed) {
+        m_cameraFollowEnabled = !m_cameraFollowEnabled;
+        m_stats.cameraFollowEnabled = m_cameraFollowEnabled;
+    }
+    m_toggleCameraPressed = input.toggleCameraFollow;
 
     m_time += dt;
     
@@ -54,10 +62,33 @@ void Game::update(float dt, const InputState& input, JobSystem* jobs) {
     auto endUpdate = std::chrono::high_resolution_clock::now();
     m_stats.updateTimeMs = std::chrono::duration<double, std::milli>(endUpdate - startUpdate).count();
     
+    // Update stats
+    m_stats.heroX = m_hero.x;
+    m_stats.heroY = m_hero.y;
+    
     rebuildInstances();
 }
 
 void Game::updateHero(float dt, const InputState& input) {
+    // Update pulse phase for visual effect
+    m_hero.pulsePhase += dt * 4.0f;
+    if (m_hero.pulsePhase > 6.28318f) {
+        m_hero.pulsePhase -= 6.28318f;
+    }
+    
+    // Update attack cooldown
+    if (m_hero.attackCooldown > 0.0f) {
+        m_hero.attackCooldown -= dt;
+    }
+    
+    // Handle attack input (will be used in Phase 6)
+    m_hero.attackTriggered = false;
+    if (input.attack && m_hero.attackCooldown <= 0.0f) {
+        m_hero.attackTriggered = true;
+        m_hero.attackCooldown = m_hero.attackCooldownMax;
+    }
+    
+    // Calculate velocity from input
     float vx = 0.0f, vy = 0.0f;
     
     if (input.moveUp)    vy += 1.0f;
@@ -65,16 +96,24 @@ void Game::updateHero(float dt, const InputState& input) {
     if (input.moveRight) vx += 1.0f;
     if (input.moveLeft)  vx -= 1.0f;
 
+    // Normalize diagonal movement
     float len = std::sqrt(vx * vx + vy * vy);
     if (len > 0.0f) {
         vx = (vx / len) * m_hero.speed;
         vy = (vy / len) * m_hero.speed;
     }
+    
+    // Store velocity for potential use
+    m_hero.velX = vx;
+    m_hero.velY = vy;
 
+    // Apply velocity
     m_hero.x += vx * dt;
     m_hero.y += vy * dt;
-    m_hero.x = std::clamp(m_hero.x, -ARENA_HALF, ARENA_HALF);
-    m_hero.y = std::clamp(m_hero.y, -ARENA_HALF, ARENA_HALF);
+    
+    // Clamp to arena bounds
+    m_hero.x = std::clamp(m_hero.x, -ARENA_HALF + 0.5f, ARENA_HALF - 0.5f);
+    m_hero.y = std::clamp(m_hero.y, -ARENA_HALF + 0.5f, ARENA_HALF - 0.5f);
 }
 
 void Game::updateEnemiesSingleThreaded(float dt) {
@@ -85,11 +124,9 @@ void Game::updateEnemiesParallel(float dt, JobSystem* jobs) {
     size_t enemyCount = m_enemies.size();
     if (enemyCount == 0) return;
     
-    // Use fixed number of jobs (4-8 is usually optimal)
     size_t numJobs = std::min(jobs->threadCount(), size_t(8));
     numJobs = std::max(numJobs, size_t(1));
     
-    // Don't parallelize if too few enemies
     if (enemyCount < numJobs * 50) {
         updateEnemiesSingleThreaded(dt);
         return;
@@ -98,7 +135,6 @@ void Game::updateEnemiesParallel(float dt, JobSystem* jobs) {
     size_t perJob = enemyCount / numJobs;
     size_t remainder = enemyCount % numJobs;
     
-    // Capture shared state by value to avoid races
     float currentTime = m_time;
     bool heavyWork = m_heavyWorkEnabled;
     
@@ -107,20 +143,17 @@ void Game::updateEnemiesParallel(float dt, JobSystem* jobs) {
         size_t count = perJob + (i < remainder ? 1 : 0);
         size_t end = start + count;
         
-        // Capture everything by value
         jobs->schedule([this, start, end, currentTime, heavyWork]() {
             for (size_t j = start; j < end; ++j) {
                 Enemy& e = m_enemies[j];
                 if (!e.alive) continue;
                 
-                // Wave motion
                 float waveX = std::sin(currentTime * 1.5f + e.phase) * 0.3f;
                 float waveY = std::cos(currentTime * 2.0f + e.phase * 1.3f) * 0.3f;
                 
                 e.x = e.baseX + waveX * e.speed;
                 e.y = e.baseY + waveY * e.speed;
                 
-                // Heavy work if enabled
                 if (heavyWork) {
                     float result = 0.0f;
                     for (int k = 0; k < 50; ++k) {
@@ -130,7 +163,6 @@ void Game::updateEnemiesParallel(float dt, JobSystem* jobs) {
                     e.x += result * 0.0001f;
                 }
                 
-                // Clamp
                 e.x = std::clamp(e.x, -ARENA_HALF, ARENA_HALF);
                 e.y = std::clamp(e.y, -ARENA_HALF, ARENA_HALF);
             }
@@ -183,23 +215,31 @@ void Game::rebuildInstances() {
     }
     m_instances.reserve(1 + aliveCount);
 
-    // Hero
+    // === HERO === (Instance 0)
+    // Pulsing cyan/white color, larger size
+    float pulse = std::sin(m_hero.pulsePhase) * 0.5f + 0.5f; // 0 to 1
+    float heroScale = 0.55f + pulse * 0.1f; // Pulsing size
+    
     InstanceData hero{};
     hero.offsetX = m_hero.x;
     hero.offsetY = m_hero.y;
-    hero.colorR = 0.2f;
-    hero.colorG = 0.5f;
+    
+    // Bright cyan that pulses to white
+    hero.colorR = 0.3f + pulse * 0.7f;
+    hero.colorG = 0.8f + pulse * 0.2f;
     hero.colorB = 1.0f;
-    hero.scale = 0.5f;
+    hero.scale = heroScale;
     m_instances.push_back(hero);
 
-    // Enemies
+    // === ENEMIES ===
     for (const auto& e : m_enemies) {
         if (!e.alive) continue;
         
         InstanceData inst{};
         inst.offsetX = e.x;
         inst.offsetY = e.y;
+        
+        // Color gradient based on position (red to orange)
         float t = (e.baseX + ARENA_HALF) / (2.0f * ARENA_HALF);
         inst.colorR = 1.0f;
         inst.colorG = 0.2f + t * 0.3f;
@@ -236,8 +276,9 @@ void Game::spawnEnemiesInGrid(uint32_t count) {
         e.speed = speedDist(rng);
         e.alive = true;
         
+        // Clear area around hero spawn
         float distSq = e.baseX * e.baseX + e.baseY * e.baseY;
-        if (distSq < 4.0f) {
+        if (distSq < 6.0f) {
             e.alive = false;
         }
         
