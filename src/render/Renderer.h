@@ -12,6 +12,12 @@ namespace Legionfall {
 
 struct InstanceData;
 
+// Push constants for view transformation
+struct PushConstants {
+    float viewScaleX, viewScaleY;
+    float viewOffsetX, viewOffsetY;
+};
+
 class Renderer {
 public:
     Renderer();
@@ -23,9 +29,11 @@ public:
     void updateInstanceBuffer(const std::vector<InstanceData>& instances);
     bool drawFrame();
     bool isInitialized() const { return m_initialized; }
+    
+    // Set camera position (for following hero)
+    void setCameraPosition(float x, float y) { m_cameraX = x; m_cameraY = y; }
 
 private:
-    // Initialization steps
     bool createInstance();
     bool createSurface(HWND hwnd, HINSTANCE hinstance);
     bool pickPhysicalDevice();
@@ -39,12 +47,11 @@ private:
     bool createCommandBuffers();
     bool createSyncObjects();
     bool createVertexBuffer();
+    bool createInstanceBuffer(size_t capacity);
 
-    // Cleanup and recreation
     void cleanupSwapchain();
     bool recreateSwapchain();
 
-    // Helpers
     VkShaderModule createShaderModule(const std::vector<char>& code);
     std::vector<char> readFile(const std::string& filename);
     uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
@@ -70,10 +77,13 @@ private:
     // State
     bool m_initialized = false;
     bool m_framebufferResized = false;
-    uint32_t m_width = 0;
-    uint32_t m_height = 0;
+    uint32_t m_width = 0, m_height = 0;
     HWND m_hwnd = nullptr;
     HINSTANCE m_hinstance = nullptr;
+    
+    // Camera
+    float m_cameraX = 0.0f, m_cameraY = 0.0f;
+    float m_viewHalfWidth = 12.0f;  // Orthographic view half-width
 
     // Core Vulkan
     VkInstance m_instance = VK_NULL_HANDLE;
@@ -101,17 +111,23 @@ private:
     VkCommandPool m_commandPool = VK_NULL_HANDLE;
     std::vector<VkCommandBuffer> m_commandBuffers;
 
-    // Sync objects
+    // Sync
     static constexpr int MAX_FRAMES_IN_FLIGHT = 2;
     std::vector<VkSemaphore> m_imageAvailableSemaphores;
     std::vector<VkSemaphore> m_renderFinishedSemaphores;
     std::vector<VkFence> m_inFlightFences;
     uint32_t m_currentFrame = 0;
 
-    // Vertex buffer
+    // Vertex buffer (triangle shape)
     VkBuffer m_vertexBuffer = VK_NULL_HANDLE;
     VkDeviceMemory m_vertexBufferMemory = VK_NULL_HANDLE;
     uint32_t m_vertexCount = 0;
+
+    // Instance buffer (per-instance data)
+    VkBuffer m_instanceBuffer = VK_NULL_HANDLE;
+    VkDeviceMemory m_instanceBufferMemory = VK_NULL_HANDLE;
+    size_t m_instanceBufferCapacity = 0;
+    uint32_t m_instanceCount = 0;
 };
 
 }
