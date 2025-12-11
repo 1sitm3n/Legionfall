@@ -41,7 +41,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 case 'P': g_input.toggleParallel = true; break;
                 case 'H': g_input.toggleHeavyWork = true; break;
                 case 'C': g_input.toggleCameraFollow = true; break;
-                case 'T': g_input.toggleChaseMode = true; break;  // T for "Track/Chase"
+                case 'T': g_input.toggleChaseMode = true; break;
                 case VK_ESCAPE: g_running = false; break;
             }
             return 0;
@@ -65,12 +65,12 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 void UpdateWindowTitle(HWND hwnd, const Legionfall::ProfilingStats& stats, int fps) {
     wchar_t title[512];
     swprintf_s(title, 
-        L"Legionfall | FPS: %d | Enemies: %u | %s | %s | %s",
+        L"Legionfall | FPS: %d | HP: %d | Kills: %u | Enemies: %u | %s",
         fps,
+        stats.heroHealth,
+        stats.killCount,
         stats.aliveCount,
-        stats.parallelEnabled ? L"PARALLEL" : L"SINGLE",
-        stats.chaseModeEnabled ? L"CHASE ON" : L"CHASE OFF",
-        stats.cameraFollowEnabled ? L"CAM:FOLLOW" : L"CAM:FIXED");
+        stats.chaseModeEnabled ? L"COMBAT" : L"PEACEFUL");
     SetWindowTextW(hwnd, title);
 }
 
@@ -79,7 +79,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
     FILE* fp; freopen_s(&fp, "CONOUT$", "w", stdout); freopen_s(&fp, "CONOUT$", "w", stderr);
     
     std::cout << "================================================" << std::endl;
-    std::cout << "  Legionfall - Phase 5: Swarm AI Chasing Hero   " << std::endl;
+    std::cout << "  Legionfall - Phase 6: Combat and Waves        " << std::endl;
     std::cout << "================================================" << std::endl;
 
     WNDCLASSEXW wc{}; wc.cbSize = sizeof(wc); wc.style = CS_HREDRAW | CS_VREDRAW;
@@ -91,7 +91,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
 
     RECT r = {0, 0, (LONG)g_width, (LONG)g_height}; AdjustWindowRect(&r, WS_OVERLAPPEDWINDOW, FALSE);
     int sw = GetSystemMetrics(SM_CXSCREEN), sh = GetSystemMetrics(SM_CYSCREEN);
-    HWND hwnd = CreateWindowExW(0, CLASS_NAME, L"Legionfall - Phase 5", WS_OVERLAPPEDWINDOW,
+    HWND hwnd = CreateWindowExW(0, CLASS_NAME, L"Legionfall - Phase 6", WS_OVERLAPPEDWINDOW,
         (sw - (r.right - r.left)) / 2, (sh - (r.bottom - r.top)) / 2,
         r.right - r.left, r.bottom - r.top, nullptr, nullptr, hInstance, nullptr);
 
@@ -113,17 +113,17 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
     SetForegroundWindow(hwnd);
     
     std::cout << "================================================" << std::endl;
-    std::cout << " Controls:                                      " << std::endl;
+    std::cout << " COMBAT CONTROLS:                               " << std::endl;
     std::cout << "   WASD  = Move hero                            " << std::endl;
-    std::cout << "   SPACE = Attack (Phase 6)                     " << std::endl;
-    std::cout << "   T     = Toggle Chase AI on/off               " << std::endl;
-    std::cout << "   P     = Toggle Parallel/Single-threaded      " << std::endl;
-    std::cout << "   H     = Toggle Heavy work mode               " << std::endl;
+    std::cout << "   SPACE = SHOCKWAVE ATTACK!                    " << std::endl;
+    std::cout << "   T     = Toggle Chase/Peaceful mode           " << std::endl;
     std::cout << "   C     = Toggle Camera follow                 " << std::endl;
+    std::cout << "   P     = Toggle Parallel/Single               " << std::endl;
+    std::cout << "   H     = Toggle Heavy work                    " << std::endl;
     std::cout << "   ESC   = Exit                                 " << std::endl;
     std::cout << "================================================" << std::endl;
     std::cout << std::endl;
-    std::cout << ">>> ENEMIES ARE NOW CHASING YOU! RUN! <<<" << std::endl;
+    std::cout << ">>> PRESS SPACE TO ATTACK! ENEMIES RESPAWN! <<<" << std::endl;
     std::cout << std::endl;
 
     using Clock = std::chrono::high_resolution_clock;
@@ -150,7 +150,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
 
         g_game->update(dt, g_input, g_jobSystem);
         
-        // Camera follow
+        // Camera
         float heroX, heroY;
         g_game->getHeroPosition(heroX, heroY);
         
@@ -178,13 +178,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
             double avgFrameTime = frameTimeAccum / frameCount;
             
             std::cout << std::fixed << std::setprecision(2);
-            std::cout << "[" << (stats.parallelEnabled ? "Parallel" : "Single  ") << "] "
-                      << "FPS: " << std::setw(4) << fps 
-                      << " | Update: " << std::setw(6) << stats.updateTimeMs << " ms"
-                      << " | Frame: " << std::setw(6) << avgFrameTime << " ms"
-                      << " | Enemies: " << stats.aliveCount
-                      << (stats.chaseModeEnabled ? " | CHASING" : " | IDLE")
-                      << (stats.heavyWorkEnabled ? " | HEAVY" : "")
+            std::cout << "HP: " << std::setw(3) << stats.heroHealth 
+                      << " | Kills: " << std::setw(5) << stats.killCount
+                      << " | FPS: " << std::setw(4) << fps 
+                      << " | Update: " << std::setw(5) << stats.updateTimeMs << " ms"
+                      << " | Alive: " << stats.aliveCount
+                      << (stats.chaseModeEnabled ? " | COMBAT" : " | PEACEFUL")
                       << std::endl;
             
             UpdateWindowTitle(hwnd, stats, fps);
@@ -192,6 +191,21 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
             frameCount = 0;
             frameTimeAccum = 0.0;
             lastPrintTime = now;
+        }
+        
+        // Check for game over
+        auto& stats = g_game->getStats();
+        if (stats.heroHealth <= 0) {
+            std::cout << std::endl;
+            std::cout << "========================================" << std::endl;
+            std::cout << "         GAME OVER!                     " << std::endl;
+            std::cout << "   Final Kill Count: " << stats.killCount << std::endl;
+            std::cout << "========================================" << std::endl;
+            
+            wchar_t gameOverMsg[256];
+            swprintf_s(gameOverMsg, L"GAME OVER!\n\nYou defeated %u enemies!\n\nPress OK to exit.", stats.killCount);
+            MessageBoxW(hwnd, gameOverMsg, L"Legionfall", MB_OK | MB_ICONINFORMATION);
+            g_running = false;
         }
     }
 

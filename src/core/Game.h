@@ -2,13 +2,12 @@
 #include <vector>
 #include <cstdint>
 #include <chrono>
-#include <atomic>
 
 namespace Legionfall {
 
 class JobSystem;
 
-// Per-instance GPU data - must match shader layout
+// Per-instance GPU data
 struct InstanceData {
     float offsetX, offsetY;
     float colorR, colorG, colorB;
@@ -20,25 +19,39 @@ struct Hero {
     float x = 0.0f, y = 0.0f;
     float velX = 0.0f, velY = 0.0f;
     float speed = 8.0f;
-    float radius = 0.4f;
+    float radius = 0.35f;
     
     // Combat
-    float attackRadius = 3.0f;
+    float attackRadius = 3.5f;
     float attackCooldown = 0.0f;
-    float attackCooldownMax = 0.5f;
+    float attackCooldownMax = 0.4f;
     bool attackTriggered = false;
     
-    // Visual effects
+    // Shockwave visual effect
+    float shockwaveRadius = 0.0f;
+    float shockwaveAlpha = 0.0f;
+    
+    // Stats
+    int health = 100;
+    int maxHealth = 100;
+    int killCount = 0;
+    
+    // Visual
     float pulsePhase = 0.0f;
+    float damageFlash = 0.0f;
 };
 
 struct Enemy {
     float x, y;
-    float baseX, baseY;   // Original spawn (for respawn)
-    float phase;          // Random phase for variety
-    float speed;          // Movement speed
-    float chaseSpeed;     // Speed when chasing hero
+    float baseX, baseY;
+    float phase;
+    float speed;
+    float chaseSpeed;
     bool alive;
+    
+    // Death animation
+    float deathTimer;
+    float deathX, deathY;  // Position at death for respawn reference
 };
 
 struct InputState {
@@ -59,6 +72,8 @@ struct ProfilingStats {
     double frameTimeMs = 0.0;
     uint32_t enemyCount = 0;
     uint32_t aliveCount = 0;
+    uint32_t killCount = 0;
+    int heroHealth = 100;
     bool parallelEnabled = true;
     bool heavyWorkEnabled = false;
     bool cameraFollowEnabled = false;
@@ -75,11 +90,16 @@ public:
     const ProfilingStats& getStats() const { return m_stats; }
     void getHeroPosition(float& x, float& y) const { x = m_hero.x; y = m_hero.y; }
     bool isCameraFollowEnabled() const { return m_cameraFollowEnabled; }
+    float getShockwaveRadius() const { return m_hero.shockwaveRadius; }
+    float getShockwaveAlpha() const { return m_hero.shockwaveAlpha; }
 
 private:
     void updateHero(float dt, const InputState& input);
+    void performAttack();
     void updateEnemiesSingleThreaded(float dt);
     void updateEnemiesParallel(float dt, JobSystem* jobs);
+    void checkCollisions();
+    void respawnEnemy(Enemy& e);
     void rebuildInstances();
     void spawnEnemiesInGrid(uint32_t count);
     float doHeavyWork(float x, float y);
@@ -90,6 +110,7 @@ private:
     ProfilingStats m_stats;
     
     float m_time = 0.0f;
+    uint32_t m_initialEnemyCount = 0;
     
     // Toggle states
     bool m_parallelEnabled = true;
@@ -103,6 +124,9 @@ private:
     
     // Arena bounds
     static constexpr float ARENA_HALF = 10.0f;
+    
+    // Respawn delay
+    static constexpr float RESPAWN_DELAY = 2.0f;
 };
 
 }
