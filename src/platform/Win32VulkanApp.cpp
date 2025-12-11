@@ -6,6 +6,7 @@
 #include "core/JobSystem.h"
 #include <chrono>
 #include <iostream>
+#include <iomanip>
 
 namespace {
     Legionfall::Renderer* g_renderer = nullptr;
@@ -17,8 +18,8 @@ namespace {
     uint32_t g_width = 1280, g_height = 720;
     const wchar_t* CLASS_NAME = L"LegionfallWindow";
 
-    // Phase 2: Start with 1000 enemies!
-    constexpr uint32_t INITIAL_ENEMIES = 1000;
+    // Phase 3: More enemies for stress test
+    constexpr uint32_t INITIAL_ENEMIES = 5000;
 }
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
@@ -58,13 +59,24 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     }
 }
 
+void UpdateWindowTitle(HWND hwnd, const Legionfall::ProfilingStats& stats, int fps) {
+    wchar_t title[256];
+    swprintf_s(title, L"Legionfall | FPS: %d | Enemies: %u | Update: %.2f ms | %s | %s",
+        fps,
+        stats.aliveCount,
+        stats.updateTimeMs,
+        stats.parallelEnabled ? L"PARALLEL" : L"SINGLE",
+        stats.heavyWorkEnabled ? L"HEAVY" : L"LIGHT");
+    SetWindowTextW(hwnd, title);
+}
+
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
     AllocConsole();
     FILE* fp; freopen_s(&fp, "CONOUT$", "w", stdout); freopen_s(&fp, "CONOUT$", "w", stderr);
     
-    std::cout << "========================================" << std::endl;
-    std::cout << "  Legionfall - Phase 2: Instanced Swarm " << std::endl;
-    std::cout << "========================================" << std::endl;
+    std::cout << "=============================================" << std::endl;
+    std::cout << "  Legionfall - Phase 3: Parallel Swarm       " << std::endl;
+    std::cout << "=============================================" << std::endl;
 
     WNDCLASSEXW wc{}; wc.cbSize = sizeof(wc); wc.style = CS_HREDRAW | CS_VREDRAW;
     wc.lpfnWndProc = WindowProc; wc.hInstance = hInstance;
@@ -75,7 +87,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
 
     RECT r = {0, 0, (LONG)g_width, (LONG)g_height}; AdjustWindowRect(&r, WS_OVERLAPPEDWINDOW, FALSE);
     int sw = GetSystemMetrics(SM_CXSCREEN), sh = GetSystemMetrics(SM_CYSCREEN);
-    HWND hwnd = CreateWindowExW(0, CLASS_NAME, L"Legionfall - Phase 2", WS_OVERLAPPEDWINDOW,
+    HWND hwnd = CreateWindowExW(0, CLASS_NAME, L"Legionfall - Phase 3", WS_OVERLAPPEDWINDOW,
         (sw - (r.right - r.left)) / 2, (sh - (r.bottom - r.top)) / 2,
         r.right - r.left, r.bottom - r.top, nullptr, nullptr, hInstance, nullptr);
 
@@ -83,7 +95,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
     g_game = new Legionfall::Game();
     g_renderer = new Legionfall::Renderer();
     
-    std::cout << "[OK] JobSystem: " << g_jobSystem->threadCount() << " threads" << std::endl;
+    std::cout << "[OK] JobSystem: " << g_jobSystem->threadCount() << " worker threads" << std::endl;
 
     if (!g_renderer->init(hwnd, hInstance, g_width, g_height)) {
         MessageBoxW(hwnd, L"Vulkan init failed!", L"Error", MB_OK);
@@ -96,13 +108,20 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
     ShowWindow(hwnd, nCmdShow);
     SetForegroundWindow(hwnd);
     
-    std::cout << "========================================" << std::endl;
-    std::cout << " Controls: WASD=Move, ESC=Exit          " << std::endl;
-    std::cout << "========================================" << std::endl;
+    std::cout << "=============================================" << std::endl;
+    std::cout << " Controls:                                   " << std::endl;
+    std::cout << "   WASD  = Move hero                         " << std::endl;
+    std::cout << "   P     = Toggle Parallel/Single-threaded   " << std::endl;
+    std::cout << "   H     = Toggle Heavy work mode            " << std::endl;
+    std::cout << "   ESC   = Exit                              " << std::endl;
+    std::cout << "=============================================" << std::endl;
+    std::cout << std::endl;
 
-    auto lastTime = std::chrono::high_resolution_clock::now();
+    using Clock = std::chrono::high_resolution_clock;
+    auto lastTime = Clock::now();
+    auto lastPrintTime = Clock::now();
     int frameCount = 0;
-    double fpsTimer = 0.0;
+    double frameTimeAccum = 0.0;
     
     MSG msg{};
     while (g_running) {
@@ -112,33 +131,49 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
         }
         if (!g_running) break;
 
-        auto now = std::chrono::high_resolution_clock::now();
+        auto now = Clock::now();
         float dt = std::chrono::duration<float>(now - lastTime).count();
         lastTime = now;
         if (dt > 0.1f) dt = 0.1f;
         if (g_minimized) { Sleep(10); continue; }
 
+        // Update game
         g_game->update(dt, g_input, g_jobSystem);
         
-        // Camera follows hero (optional - remove for static camera)
-        float hx, hy;
-        g_game->getHeroPosition(hx, hy);
-        // g_renderer->setCameraPosition(hx, hy);  // Uncomment to follow hero
-        
+        // Render
         g_renderer->updateInstanceBuffer(g_game->getInstanceData());
         g_renderer->drawFrame();
 
         frameCount++;
-        fpsTimer += dt;
-        if (fpsTimer >= 1.0) {
+        frameTimeAccum += dt * 1000.0; // ms
+
+        // Print stats every second
+        double timeSincePrint = std::chrono::duration<double>(now - lastPrintTime).count();
+        if (timeSincePrint >= 1.0) {
             auto& stats = g_game->getStats();
-            std::cout << "FPS: " << frameCount << " | Instances: " << stats.aliveCount + 1 << std::endl;
+            int fps = frameCount;
+            double avgFrameTime = frameTimeAccum / frameCount;
+            
+            // Console output
+            std::cout << std::fixed << std::setprecision(2);
+            std::cout << "[" << (stats.parallelEnabled ? "Parallel" : "Single  ") << "] "
+                      << "FPS: " << std::setw(4) << fps 
+                      << " | Update: " << std::setw(6) << stats.updateTimeMs << " ms"
+                      << " | Frame: " << std::setw(6) << avgFrameTime << " ms"
+                      << " | Enemies: " << stats.aliveCount
+                      << (stats.heavyWorkEnabled ? " | HEAVY" : "")
+                      << std::endl;
+            
+            // Window title
+            UpdateWindowTitle(hwnd, stats, fps);
+            
             frameCount = 0;
-            fpsTimer = 0.0;
+            frameTimeAccum = 0.0;
+            lastPrintTime = now;
         }
     }
 
-    std::cout << "Shutting down..." << std::endl;
+    std::cout << std::endl << "Shutting down..." << std::endl;
     delete g_renderer; delete g_game; delete g_jobSystem;
     DestroyWindow(hwnd);
     Sleep(300);

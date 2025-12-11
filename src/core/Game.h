@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include <cstdint>
+#include <chrono>
 
 namespace Legionfall {
 
@@ -11,7 +12,7 @@ struct InstanceData {
     float offsetX, offsetY;       // World position
     float colorR, colorG, colorB; // RGB color
     float scale;                  // Uniform scale
-    float padding[2];             // Pad to 32 bytes for alignment
+    float padding[2];             // Pad to 32 bytes
 };
 
 struct Hero {
@@ -22,8 +23,10 @@ struct Hero {
 };
 
 struct Enemy {
-    float x, y;
-    float velX, velY;
+    float x, y;           // Current position
+    float baseX, baseY;   // Original spawn position (for wave motion)
+    float phase;          // Phase offset for wave motion
+    float speed;          // Movement speed multiplier
     bool alive;
 };
 
@@ -40,6 +43,7 @@ struct InputState {
 struct ProfilingStats {
     double fps = 0.0;
     double updateTimeMs = 0.0;
+    double frameTimeMs = 0.0;
     uint32_t enemyCount = 0;
     uint32_t aliveCount = 0;
     bool parallelEnabled = true;
@@ -57,9 +61,14 @@ public:
 
 private:
     void updateHero(float dt, const InputState& input);
-    void updateEnemies(float dt);
+    void updateEnemiesSingleThreaded(float dt);
+    void updateEnemiesParallel(float dt, JobSystem* jobs);
+    void updateEnemySlice(size_t start, size_t end, float dt);
     void rebuildInstances();
     void spawnEnemiesInGrid(uint32_t count);
+    
+    // Heavy work simulation (for profiling)
+    float doHeavyWork(float x, float y);
 
     Hero m_hero;
     std::vector<Enemy> m_enemies;
@@ -67,6 +76,12 @@ private:
     ProfilingStats m_stats;
     
     float m_time = 0.0f;
+    
+    // Toggle states (persist across frames)
+    bool m_parallelEnabled = true;
+    bool m_heavyWorkEnabled = false;
+    bool m_toggleParallelPressed = false;
+    bool m_toggleHeavyPressed = false;
     
     // Arena bounds
     static constexpr float ARENA_HALF = 10.0f;
