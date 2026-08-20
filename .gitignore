@@ -1,4 +1,5 @@
-﻿build/
+build/
+build-*/
 *.spv
 .vs/
 *.vcxproj.user
@@ -7,3 +8,6 @@
 *.pdb
 CMakeCache.txt
 CMakeFiles/
+compile_commands.json
+.cache/
+.DS_Store

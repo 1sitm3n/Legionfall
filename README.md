@@ -10,6 +10,7 @@
 [![Vulkan](https://img.shields.io/badge/Vulkan-1.2+-red.svg)](https://www.vulkan.org/)
 [![Platform](https://img.shields.io/badge/Platform-Windows-lightgrey.svg)](https://www.microsoft.com/windows)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![CI](https://github.com/1sitm3n/Legionfall/actions/workflows/ci.yml/badge.svg)](https://github.com/1sitm3n/Legionfall/actions/workflows/ci.yml)
 
 *A technical demonstration of real-time rendering and parallel computation, featuring GPU-instanced rendering of tens of thousands of entities with multi-threaded AI processing.*
 
@@ -53,14 +54,16 @@ This project intentionally avoids Unity, Unreal, Godot, and similar engines to d
 - **Visual Effects** — Pulsing hero, proximity-based enemy colours, shockwave rings, arena boundaries
 
 ### Performance
-- **Multi-threaded AI** — JobSystem distributes enemy updates across CPU cores
+- **Lock-free work stealing** — Chase-Lev deque per worker, no global queue, no mutex on the dispatch path
+- **Dynamic load balancing** — fixed-size chunks, so fast cores steal from slow ones instead of waiting at the barrier
+- **Zero allocation** — jobs hold their closure inline; nothing calls into the allocator after startup
 - **Parallel vs Sequential Toggle** — Real-time comparison of threading performance
 - **Heavy Work Mode** — Artificial computation load for stress testing
 - **Live Profiling** — FPS, update time, frame time, thread count displayed in real-time
 - **Adjustable Entity Count** — Scale from 100 to 50,000 enemies on-the-fly
 
 ### ️ Engine Systems
-- **Custom JobSystem** — Lock-free task scheduling with work stealing
+- **Custom JobSystem** — Lock-free work-stealing scheduler (Chase-Lev deques)
 - **Vulkan Renderer** — Complete pipeline: swapchain, render pass, shaders, synchronization
 - **Win32 Platform Layer** — Native window management and input handling
 - **Game State Management** — Clean separation of simulation and presentation
@@ -85,6 +88,9 @@ Legionfall/
 │   │
 │   └── platform/
 │       └── Win32VulkanApp.cpp  # Entry point, window, input, main loop
+│
+├── tests/tests.cpp             # 16 tests, no external framework
+└── bench/bench.cpp             # old vs new, three workloads
 │
 └── shaders/
     ├── instanced.vert          # Vertex shader with instancing support
@@ -126,7 +132,137 @@ Legionfall/
 
 ---
 
-##  Building
+## Scheduler
+
+The job system was rewritten from a mutex-and-condvar thread pool to a lock-free
+work-stealing scheduler.
+
+| | Old | New |
+|---|---|---|
+| Queue | one global `std::queue` behind a mutex | per-worker Chase-Lev deque |
+| Dispatch path | blocking | lock-free |
+| Task storage | `std::function` — heap allocation each | inline, no allocation |
+| `wait()` | submitter sleeps on a condvar | submitter helps run jobs |
+| Load balancing | equal item counts per thread | fixed chunks, stolen on demand |
+| Known bug | lost wakeup in `wait()` — could hang | fixed, and the condvar removed from that path |
+
+### Measured
+
+Apple M3 (4P + 4E), 7 workers + the submitting thread, median of 15 runs.
+Reproduce with `./build/lf_bench`.
+
+| Workload | Old | New | |
+|---|---|---|---|
+| **uniform** — 512 identical jobs | 1.32 ms | 1.23 ms | **1.08x** |
+| **skewed** — cost clustered in the first 12% | 4.53 ms | 1.15 ms | **3.95x** |
+| **tiny** — 200k near-empty jobs | 112.31 ms | 49.37 ms | **2.27x** |
+
+The honest reading: most of the 3.95x is the load balancing, not the lock-free
+data structure. Chunking finely enough for the stealer to rebalance is what wins
+on skewed work — you'd get much of that from the old pool with smaller chunks.
+Lock-free earns its place on `tiny`, where the mutex is genuinely contended and
+every task is a `malloc`, and in the bounded worst case, which the benchmark
+can't show.
+
+### The fences are load-bearing
+
+Chase-Lev's 2005 correctness proof assumes sequential consistency. On ARM it
+isn't safe as written — the owner's store to `bottom` can float past its load of
+`top`, and then the owner and a thief both take the same job. The implementation
+uses the orderings from Lê et al. (PPoPP 2013).
+
+That claim is reproducible rather than folklore:
+
+```bash
+cmake -S . -B build-broken -DCMAKE_BUILD_TYPE=Release -DLF_BREAK_POP_FENCE=ON
+cmake --build build-broken
+./build-broken/lf_tests deque_steal_no_duplication
+```
+
+That downgrades one fence to `relaxed`. On an M3 the duplication test then fails
+on about a quarter of runs:
+
+```
+FAIL tests.cpp:155  prev == 0  (1 vs 0)          <- job claimed twice
+FAIL tests.cpp:201  totalClaimed == kItems  (200001 vs 200000)
+```
+
+CI runs this as a canary job that is *expected to fail*. If it ever passes, the
+test has stopped being sensitive to the thing it exists to catch.
+
+---
+
+## Playtesting without Windows
+
+The game proper is Win32 + Vulkan. `tools/playtest.cpp` runs the **real
+simulation** — the same `Game::update`, the same enemy AI, the same JobSystem —
+and draws it with ANSI colour instead of a swapchain, so you can play it on
+macOS or Linux:
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+./build/lf_playtest 20000
+```
+
+Controls are the same as the game: `WASD` move, `SPACE` shockwave, `P` parallel,
+`H` heavy, `T` chase, `C` camera, `+`/`-` enemies, `R` restart, `Q` quit.
+
+The HUD shows live scheduler telemetry — jobs run, jobs stolen, how many the
+submitting thread picked up in `wait()`, and a per-worker bar so you can watch
+the stealing rebalance frame by frame.
+
+Everything below the renderer is the real thing. It is not the Vulkan build, and
+it does not pretend to be.
+
+### The parallel path is verified against the sequential one
+
+There's no cross-enemy dependency in the enemy update, so chunking the range
+differently must not change a single float:
+
+```bash
+./tools/check_determinism.sh
+# PASS - parallel path is bit-identical to sequential (77920 bytes)
+```
+
+That runs the simulation twice — once forced sequential, once parallel — for 200
+fixed-timestep frames and compares the raw instance buffers byte for byte. It
+runs in CI.
+
+One run per process on purpose: `Game.cpp` keeps its RNG in a file-static that
+`init()` never reseeds, so two `Game` objects in one process start from
+different random streams. Worth knowing independently — it also means `restart()`
+isn't reproducible.
+
+---
+
+## Building the scheduler (any platform)
+
+The scheduler, its tests and the benchmark build without Vulkan or Windows, so
+you can run all of it on macOS or Linux:
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+ctest --test-dir build --output-on-failure    # 15 tests
+./build/lf_bench                              # benchmark
+```
+
+Sanitizers — both clean, both run in CI:
+
+```bash
+cmake -S . -B build-tsan -DCMAKE_BUILD_TYPE=RelWithDebInfo -DLF_TSAN=ON
+cmake --build build-tsan && ctest --test-dir build-tsan --output-on-failure
+```
+
+```bash
+cmake -S . -B build-asan -DCMAKE_BUILD_TYPE=RelWithDebInfo -DLF_ASAN=ON
+cmake --build build-asan && ctest --test-dir build-asan --output-on-failure
+```
+
+---
+
+##  Building the game (Windows)
 
 
 ### Prerequisites

@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  # Release build + tests on both architectures. ARM matters here: the deque's
+  # memory ordering is only really exercised on a weak memory model, and an
+  # x86-only pipeline would pass happily with the fences missing.
+  test:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest,  name: "linux x86-64 / gcc" }
+          - { os: macos-14,       name: "macos arm64 / clang" }
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build build --parallel
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+      - name: Simulation smoke test
+        if: runner.os != 'Windows'
+        run: ./build/lf_playtest 20000 --frames 120
+
+      # No cross-enemy dependency in the enemy update, so chunking the range
+      # differently must not change a single float.
+      - name: Parallel path matches sequential bit-for-bit
+        if: runner.os != 'Windows'
+        run: ./tools/check_determinism.sh ./build/lf_playtest
+
+      - name: Benchmark
+        run: ./build/lf_bench
+
+  sanitizers:
+    name: ${{ matrix.san }}
+    runs-on: macos-14
+    strategy:
+      fail-fast: false
+      matrix:
+        san: [LF_ASAN, LF_TSAN]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo -D${{ matrix.san }}=ON
+      - name: Build
+        run: cmake --build build --parallel
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+  # Builds with the pop() fence deliberately downgraded to relaxed and checks
+  # the duplication test actually catches it. If this job ever goes green, the
+  # test has stopped being sensitive to the thing it exists to detect.
+  fence-canary:
+    name: fence canary (expected to fail)
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure with the fence broken
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DLF_BREAK_POP_FENCE=ON
+      - name: Build
+        run: cmake --build build --parallel
+      - name: The duplication test must fail here
+        run: |
+          for i in $(seq 1 25); do
+            if ! ./build/lf_tests deque_steal_no_duplication > /dev/null 2>&1; then
+              echo "Caught the missing fence on run $i - canary is working."
+              exit 0
+            fi
+          done
+          echo "25 runs and the broken fence was never caught."
+          echo "deque_steal_no_duplication is no longer sensitive enough."
+          exit 1
