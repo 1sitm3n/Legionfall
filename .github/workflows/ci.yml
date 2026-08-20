@@ -65,26 +65,36 @@ jobs:
       - name: Test
         run: ctest --test-dir build --output-on-failure
 
-  # Builds with the pop() fence deliberately downgraded to relaxed and checks
-  # the duplication test actually catches it. If this job ever goes green, the
-  # test has stopped being sensitive to the thing it exists to detect.
+  # Builds with the pop() fence downgraded to relaxed and sees whether the
+  # duplication test notices.
+  #
+  # Non-blocking on purpose. The race is probabilistic and depends on how much
+  # real parallelism the machine has: roughly 1 run in 20 on an idle M3, more
+  # under load, and 0 in 25 on a 3-core CI runner. Gating the build on it would
+  # produce a red main for environmental reasons, which is how people learn to
+  # ignore CI. The fence is justified by the memory model, not by this job -
+  # this is a spot-check that sometimes catches a regression, and it reports
+  # either way.
   fence-canary:
-    name: fence canary (expected to fail)
+    name: fence canary (informational)
     runs-on: macos-14
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - name: Configure with the fence broken
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DLF_BREAK_POP_FENCE=ON
       - name: Build
         run: cmake --build build --parallel
-      - name: The duplication test must fail here
+      - name: Does the duplication test still notice?
         run: |
-          for i in $(seq 1 25); do
+          for i in $(seq 1 60); do
             if ! ./build/lf_tests deque_steal_no_duplication > /dev/null 2>&1; then
-              echo "Caught the missing fence on run $i - canary is working."
+              echo "Caught the missing fence on run $i of 60."
               exit 0
             fi
           done
-          echo "25 runs and the broken fence was never caught."
-          echo "deque_steal_no_duplication is no longer sensitive enough."
+          echo "60 runs, not caught on this runner."
+          echo "Expected on a small VM - see the note in ci.yml. Reproduce locally:"
+          echo "  cmake -S . -B b -DLF_BREAK_POP_FENCE=ON && cmake --build b"
+          echo "  ./b/lf_tests deque_steal_no_duplication"
           exit 1

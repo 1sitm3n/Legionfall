@@ -179,16 +179,23 @@ cmake --build build-broken
 ./build-broken/lf_tests deque_steal_no_duplication
 ```
 
-That downgrades one fence to `relaxed`. On an M3 the duplication test then fails
-on about a quarter of runs:
+That downgrades one fence to `relaxed`. The duplication test then starts
+failing — intermittently, which is the point:
 
 ```
 FAIL tests.cpp:155  prev == 0  (1 vs 0)          <- job claimed twice
 FAIL tests.cpp:201  totalClaimed == kItems  (200001 vs 200000)
 ```
 
-CI runs this as a canary job that is *expected to fail*. If it ever passes, the
-test has stopped being sensitive to the thing it exists to catch.
+How often depends on how much real parallelism the machine has — roughly 1 run
+in 20 on an idle M3, noticeably more under load, and not at all in 25 runs on a
+3-core CI runner. CI runs it as an informational job for that reason: the fence
+is justified by the memory model, not by a flaky test, and gating a build on a
+probabilistic race is how people learn to ignore CI.
+
+That intermittency is the actual lesson. Write the deque without the fence, test
+it a few times on x86, and it looks fine. It fails later, on someone else's ARM
+board, under load.
 
 ---
 
