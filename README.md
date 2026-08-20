@@ -153,11 +153,11 @@ Reproduce with `./build/lf_bench`.
 
 | Workload | Old | New | |
 |---|---|---|---|
-| **uniform** — 512 identical jobs | 1.32 ms | 1.23 ms | **1.08x** |
-| **skewed** — cost clustered in the first 12% | 4.53 ms | 1.15 ms | **3.95x** |
-| **tiny** — 200k near-empty jobs | 112.31 ms | 49.37 ms | **2.27x** |
+| **uniform** — 512 identical jobs | 1.62 ms | 1.23 ms | **1.32x** |
+| **skewed** — cost clustered in the first 12% | 4.30 ms | 1.15 ms | **3.74x** |
+| **tiny** — 200k near-empty jobs | 89.87 ms | 41.41 ms | **2.17x** |
 
-The honest reading: most of the 3.95x is the load balancing, not the lock-free
+The honest reading: most of the 3.74x is the load balancing, not the lock-free
 data structure. Chunking finely enough for the stealer to rebalance is what wins
 on skewed work — you'd get much of that from the old pool with smaller chunks.
 Lock-free earns its place on `tiny`, where the mutex is genuinely contended and
@@ -339,7 +339,11 @@ cmake --build . --config Release
 
 ### Benchmarks
 
-Tested on: **NVIDIA GeForce RTX 4090 Laptop GPU** | **Intel Core i9-13980HX**
+Two different measurements, because they answer different questions.
+
+**Frame rate, parallel vs sequential** — RTX 4090 Laptop / i9-13980HX. These
+predate the scheduler rewrite and were taken with the old mutex thread pool;
+the sequential column is the `P` toggle, not a different scheduler.
 
 | Enemy Count | Parallel FPS | Sequential FPS | Speedup |
 |-------------|--------------|----------------|---------|
@@ -349,7 +353,23 @@ Tested on: **NVIDIA GeForce RTX 4090 Laptop GPU** | **Intel Core i9-13980HX**
 | 25,000 | 120 | 45 | ~2.7x |
 | 50,000 | 75 | 22 | ~3.4x |
 
-*With Heavy Work mode enabled, parallel speedup increases to 6-8x.*
+**Enemy update cost, old scheduler vs new** — Apple M3 (4P + 4E), 7 workers,
+median of 11 runs. Old is the previous mutex pool with one job per thread and
+equal item counts; new is `parallelFor` at the 256-item grain the game uses.
+Reproduce with `./build/lf_bench`.
+
+| Entities | Old (ms) | New (ms) | Speedup |
+|---|---|---|---|
+| 1,000 | 0.022 | 0.008 | 2.9x |
+| 5,000 | 0.029 | 0.009 | 3.1x |
+| 10,000 | 0.038 | 0.017 | 2.3x |
+| 25,000 | 0.069 | 0.042 | 1.6x |
+| **50,000** | **0.118** | **0.092** | **1.3x** |
+
+The speedup shrinks as the count rises, which is what you would expect: at low
+counts the old scheduler's per-job mutex and allocation dominate, and by 50,000
+the actual maths dominates and both are bound by the same memory traffic. The
+scheduler stops being the bottleneck, which is the point.
 
 ### Profiling Metrics
 

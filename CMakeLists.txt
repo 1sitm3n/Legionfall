@@ -109,7 +109,7 @@ endif()
 # Terminal playtest harness. Runs the real Game::update and the real JobSystem,
 # draws with ANSI instead of Vulkan. POSIX only - it needs termios.
 # ---------------------------------------------------------------------------
-if(UNIX AND NOT APPLE OR APPLE)
+if(UNIX)
     add_executable(lf_playtest tools/playtest.cpp)
     target_link_libraries(lf_playtest PRIVATE lf_core)
     if(NOT MSVC)

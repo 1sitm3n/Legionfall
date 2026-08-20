@@ -49,11 +49,17 @@ class ChaseLevDeque {
 public:
     explicit ChaseLevDeque(std::int64_t initialCapacity = 1024) {
         // 0 passes the pow2 test and gives mask = -1, which writes out of
-        // bounds on the first push. INT64_MIN passes it too. Check both, and
-        // clamp as well because Release builds define NDEBUG.
+        // bounds on the first push; INT64_MIN passes it too. The clamp has to
+        // cover non-powers-of-two as well - 100 is positive and still gives a
+        // mask of 99 - and it has to be a real clamp, because Release defines
+        // NDEBUG and the assert disappears.
         assert(initialCapacity > 0 &&
-               (initialCapacity & (initialCapacity - 1)) == 0 && "must be a positive power of two");
-        if (initialCapacity <= 0) initialCapacity = 1024;
+               (initialCapacity & (initialCapacity - 1)) == 0 &&
+               "capacity must be a positive power of two");
+        if (initialCapacity <= 0 ||
+            (initialCapacity & (initialCapacity - 1)) != 0) {
+            initialCapacity = 1024;
+        }
         Array* a = new Array(initialCapacity);
         m_array.store(a, std::memory_order_relaxed);
         m_retired.push_back(a);

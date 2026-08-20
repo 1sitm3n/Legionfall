@@ -6,6 +6,9 @@
 #if defined(__APPLE__)
 #  include <pthread.h>
 #endif
+#if defined(_MSC_VER)
+#  include <intrin.h>          // _mm_pause, __isb
+#endif
 
 namespace Legionfall {
 
@@ -34,16 +37,20 @@ inline std::uint64_t nextRandom() noexcept {
 // hundred ns and a park/unpark round trip is microseconds, so it's worth
 // burning a bit of time before giving up the core.
 inline void spinHint(int iteration) noexcept {
-#if defined(__aarch64__) || defined(_M_ARM64)
+    const int n = 1 << std::min(iteration, 6);
+#if defined(_MSC_VER) && defined(_M_ARM64)
+    // MSVC has no inline asm on x64 or ARM64, so these have to be intrinsics.
+    for (int i = 0; i < n; ++i) __isb(_ARM64_BARRIER_SY);
+#elif defined(_MSC_VER) && (defined(_M_X64) || defined(_M_IX86))
+    for (int i = 0; i < n; ++i) _mm_pause();
+#elif defined(__aarch64__)
     // ISB is the usual spin hint on AArch64. YIELD is a nop on a lot of parts
     // and WFE needs a paired event to wake it.
-    for (int i = 0; i < (1 << std::min(iteration, 6)); ++i)
-        asm volatile("isb" ::: "memory");
-#elif defined(__x86_64__) || defined(_M_X64)
-    for (int i = 0; i < (1 << std::min(iteration, 6)); ++i)
-        asm volatile("pause" ::: "memory");
+    for (int i = 0; i < n; ++i) asm volatile("isb" ::: "memory");
+#elif defined(__x86_64__) || defined(__i386__)
+    for (int i = 0; i < n; ++i) asm volatile("pause" ::: "memory");
 #else
-    (void)iteration;
+    (void)n;
     std::this_thread::yield();
 #endif
 }
@@ -136,6 +143,14 @@ bool JobSystem::tryGetJob(std::size_t self, Job*& out) {
     return false;
 }
 
+void JobSystem::nestedWait() {
+    std::fprintf(stderr,
+        "JobSystem::wait() called from inside a running job. That job is still "
+        "counted as pending, so the wait can never be satisfied. Only the "
+        "thread that constructed the JobSystem may call wait().\n");
+    std::abort();
+}
+
 void JobSystem::unregisteredCaller(const char* fn) {
     // Silently dropping the job would lose work; indexing m_deques with
     // (size_t)-1 would corrupt memory. Neither is better than stopping.
@@ -144,19 +159,6 @@ void JobSystem::unregisteredCaller(const char* fn) {
         "called from the thread that constructed the JobSystem, or from inside "
         "a running job. See the ordering contract in JobSystem.h.\n", fn);
     std::abort();
-}
-
-// Run one job if there is one, otherwise back off. Used by schedule() when the
-// ring is full and by wait() while draining.
-void JobSystem::helpOnce(std::size_t self) {
-    Job* job = nullptr;
-    if (tryGetJob(self, job)) {
-        job->run();
-        if (self == m_submitterQueue) bump(m_mainExecuted);
-        else if (self < m_statsCount) bump(m_stats[self].executed);
-        return;
-    }
-    std::this_thread::yield();
 }
 
 void JobSystem::workerLoop(std::size_t index) {
@@ -222,10 +224,10 @@ void JobSystem::wait() {
 
     // Only the submitting thread may wait. A job that calls wait() is itself
     // still counted in m_pending, so once everything else drains the loop below
-    // spins forever on pending == 1 with nothing left to help with. Caught by
-    // review rather than by a test, because nothing in-tree does it.
-    assert(self == m_submitterQueue &&
-           "wait() from inside a job would deadlock - it waits on itself");
+    // spins on pending == 1 forever with nothing left to help with. An assert
+    // is no good here - Release defines NDEBUG and you get a silent hang
+    // instead of a diagnostic.
+    if (self != m_submitterQueue) nestedWait();
 
     int spins = 0;
     while (m_pending.value.load(std::memory_order_acquire) > 0) {

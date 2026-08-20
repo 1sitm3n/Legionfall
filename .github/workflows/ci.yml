@@ -19,14 +19,17 @@ jobs:
         include:
           - { os: ubuntu-latest,  name: "linux x86-64 / gcc" }
           - { os: macos-14,       name: "macos arm64 / clang" }
+          # MSVC has no inline asm on x64 or ARM64, so the spin hint has to go
+          # through intrinsics. This leg is what catches that.
+          - { os: windows-latest, name: "windows x86-64 / msvc" }
     steps:
       - uses: actions/checkout@v4
       - name: Configure
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
       - name: Build
-        run: cmake --build build --parallel
+        run: cmake --build build --config Release --parallel
       - name: Test
-        run: ctest --test-dir build --output-on-failure
+        run: ctest --test-dir build --build-config Release --output-on-failure
       - name: Simulation smoke test
         if: runner.os != 'Windows'
         run: ./build/lf_playtest 20000 --frames 120
@@ -38,7 +41,13 @@ jobs:
         run: ./tools/check_determinism.sh ./build/lf_playtest
 
       - name: Benchmark
+        if: runner.os != 'Windows'
         run: ./build/lf_bench
+
+      # Multi-config generator, so the binary lands in build/Release.
+      - name: Benchmark (Windows)
+        if: runner.os == 'Windows'
+        run: .\build\Release\lf_bench.exe
 
   sanitizers:
     name: ${{ matrix.san }}

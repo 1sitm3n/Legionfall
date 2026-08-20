@@ -16,6 +16,10 @@
 //   tiny      hundreds of thousands of near-empty jobs. Pure per-job cost -
 //             mutex acquire + heap alloc for std::function vs a deque push.
 //
+//   entities  the real thing - the enemy update body at the entity counts the
+//             game actually runs, old scheduler with static splitting against
+//             the new one with parallelFor.
+//
 // On a P/E core machine the skewed numbers are the interesting ones. Equal item
 // counts per core means the barrier waits for the E-cores every single time.
 
@@ -47,6 +51,31 @@ inline double burn(int iterations, double seed) noexcept {
         acc  = std::tanh(acc);
     }
     return acc;
+}
+
+// Same shape as the chase branch of Game::updateEnemiesParallel - a couple of
+// sqrts, a sin/cos wobble and a clamp per entity.
+struct Ent { float x, y, baseX, baseY, phase, speed, chaseSpeed; bool alive; };
+
+inline void updateRange(Ent* e, std::size_t b, std::size_t n, float t, float dt) noexcept {
+    for (std::size_t i = b; i < n; ++i) {
+        Ent& s = e[i];
+        if (!s.alive) continue;
+        float dx = 0.0f - s.x, dy = 0.0f - s.y;
+        float dist = std::sqrt(dx * dx + dy * dy);
+        if (dist > 0.1f) {
+            dx /= dist; dy /= dist;
+            float wob = std::sin(t * 3.0f + s.phase * 2.0f) * 0.3f;
+            dx += std::cos(s.phase + t) * wob * 0.5f;
+            dy += std::sin(s.phase + t) * wob * 0.5f;
+            float wl = std::sqrt(dx * dx + dy * dy);
+            if (wl > 0.0f) { dx /= wl; dy /= wl; }
+            s.x += dx * s.chaseSpeed * dt;
+            s.y += dy * s.chaseSpeed * dt;
+        }
+        s.x = std::clamp(s.x, -10.0f, 10.0f);
+        s.y = std::clamp(s.y, -10.0f, 10.0f);
+    }
 }
 
 struct Result {
@@ -131,6 +160,7 @@ int main(int argc, char** argv) {
         Result newR = timeIt(3, 15, [&] {
             for (int i = 0; i < kJobs; ++i)
                 newJs.schedule([i]() noexcept { volatile double s = burn(kWork, i); (void)s; });
+            newJs.notifyWorkers();      // once per batch, not once per job
             newJs.wait();
         });
         row("lock-free stealing", newR, oldR.medianMs);
@@ -230,6 +260,7 @@ int main(int argc, char** argv) {
         Result newR = timeIt(1, 5, [&] {
             for (int i = 0; i < kJobs; ++i)
                 newJs.schedule([&sink]() noexcept { sink.fetch_add(1, std::memory_order_relaxed); });
+            newJs.notifyWorkers();
             newJs.wait();
         });
         row("lock-free stealing", newR, oldR.medianMs);
@@ -243,6 +274,48 @@ int main(int argc, char** argv) {
                     (unsigned long long)s.parked);
         std::printf("  jobs run by the submitting thread in wait(): %llu\n",
                     (unsigned long long)s.mainExecuted);
+    }
+
+    // --------------------------------------------------------------- entities
+    {
+        header("entities  -  the enemy update at the counts the game runs");
+        std::printf("  %9s %12s %12s %8s\n",
+                    "entities", "old (ms)", "new (ms)", "speedup");
+
+        const std::size_t counts[] = {1000, 5000, 10000, 25000, 50000};
+        for (std::size_t n : counts) {
+            std::vector<Ent> ents(n);
+            for (std::size_t i = 0; i < n; ++i) {
+                ents[i] = { (float)(i % 40) - 20.0f, (float)(i / 40 % 40) - 20.0f,
+                            0.0f, 0.0f, (float)i * 0.017f, 1.0f, 2.0f, true };
+            }
+            Ent* e = ents.data();
+            float t = 0.0f;
+
+            // Old: MutexJobSystem, one job per thread, equal item counts.
+            MutexJobSystem oldJs(workers);
+            Result oldR = timeIt(3, 11, [&] {
+                const std::size_t per = n / workers;
+                for (std::size_t w = 0; w < workers; ++w) {
+                    const std::size_t b = w * per;
+                    const std::size_t z = (w + 1 == workers) ? n : b + per;
+                    oldJs.schedule([e, b, z, t] { updateRange(e, b, z, t, 1.0f / 60.0f); });
+                }
+                oldJs.wait();
+            });
+
+            // New: parallelFor with the grain the game uses.
+            JobSystem newJs(workers);
+            Result newR = timeIt(3, 11, [&] {
+                newJs.parallelFor(0, n, 256, [e, t](std::size_t b, std::size_t z) noexcept {
+                    updateRange(e, b, z, t, 1.0f / 60.0f);
+                });
+                newJs.wait();
+            });
+
+            std::printf("  %9zu %12.3f %12.3f %7.2fx\n",
+                        n, oldR.medianMs, newR.medianMs, oldR.medianMs / newR.medianMs);
+        }
     }
 
     // ---------------------------------------------------------------- scaling

@@ -5,7 +5,8 @@
 //   Every worker owns a Chase-Lev deque. It pushes and pops its own bottom with
 //   no atomic RMW in the normal case. Idle workers steal off the top of a
 //   random victim with one CAS. The submitting thread gets a deque too, so
-//   schedule() never touches anything shared.
+//   schedule() touches only its own deque and the pending counter - waking
+//   parked workers is hoisted out to notifyWorkers(), once per batch.
 //
 //   Jobs hold their closure inline. Nothing allocates after construction.
 //
@@ -132,7 +133,6 @@ public:
         m_pending.value.fetch_add(1, std::memory_order_relaxed);
         Job* job = makeJob(*m_pools[q], &m_pending.value, std::forward<Fn>(fn));
         m_deques[q]->push(job);
-        m_events.notifyAll();
     }
 
     // Chop [begin,end) into chunks of grain. Use this instead of splitting into
@@ -147,7 +147,15 @@ public:
             const std::size_t e = (s + grain < end) ? s + grain : end;
             schedule([fn, s, e]() noexcept { fn(s, e); });
         }
+        notifyWorkers();
     }
+
+    // Wake anything parked. schedule() deliberately does NOT do this - it would
+    // be an epoch bump plus a mutex acquisition per job, which is the single
+    // most expensive thing on that path. Call it once after queueing a batch.
+    // Skipping it entirely is safe, just slower: parked workers re-check on a
+    // bounded wait, and wait() helps regardless.
+    void notifyWorkers() { m_events.notifyAll(); }
 
     // Drains the batch by helping, not idling.
     void wait();
@@ -173,8 +181,8 @@ private:
     void        workerLoop(std::size_t index);
     bool        tryGetJob(std::size_t self, Job*& out);
     std::size_t queueIndex() const noexcept;
-    void        helpOnce(std::size_t self);          // run one job, or back off
     [[noreturn]] static void unregisteredCaller(const char* fn);
+    [[noreturn]] static void nestedWait();
 
     // Every worker hits this on every completion, so give it its own line.
     struct alignas(kCacheLine) PaddedCounter {
